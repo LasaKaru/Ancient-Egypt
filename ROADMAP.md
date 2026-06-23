@@ -24,7 +24,8 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 ---
 
 ## 1. Player systems & progression
-- [ ] **Inventory system** (M) — collectible relics/keys/scrolls; grid or radial UI; item pickups in the world.
+- [x] **Inventory system** — collectible Sacred Scarabs (5), inventory panel (I), HUD counter. ✅
+- [x] **Save / load** — auto-save + Continue (objectives, door/light/boss, companions, scarabs, camera). ✅
 - [ ] **Equippable tools** (M) — flashlight upgrades, a brush that "reveals" hidden frescoes, a chisel, a torch.
 - [ ] **Hotbar / quick-use** (S) — number keys / radial for tools.
 - [ ] **Ability unlocks** (L) — e.g. dash, double-jump, "ink dash" that lets the 2D figure leap gaps.

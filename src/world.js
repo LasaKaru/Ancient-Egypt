@@ -275,6 +275,22 @@
       boat3D.position.y = -0.35 + Math.sin(performance.now() * 0.001) * 0.06; // gentle bob
     });
 
+    // ---- collectible scarabs (hidden around the world) ----
+    const scarabs = [];
+    [[-7, 9, 1.2], [7, -9, 1.2], [0, -30, 1.0], [30, -2, 1.3], [-13, -2, 1.4]].forEach((s, i) => {
+      const x = s[0], z = s[1], y = heightAt(x, z) + s[2];
+      const root = LP.scarab(new B.Vector3(x, y, z));
+      scarabs.push({ root, id: i, collected: false, baseY: y });
+    });
+    scene.onBeforeRenderObservable.add(() => {
+      const t = performance.now() * 0.001;
+      scarabs.forEach((s, i) => {
+        if (s.collected) return;
+        s.root.rotation.y += 0.02;
+        s.root.position.y = s.baseY + Math.sin(t * 2 + i) * 0.15;
+      });
+    });
+
     // ---- invisible world boundary ----
     const bound = B.MeshBuilder.CreateBox("bound", { width: 170, height: 30, depth: 170 }, scene);
     bound.checkCollisions = true; bound.flipFaces(true); bound.isVisible = false;
@@ -283,7 +299,7 @@
     const spawn = new B.Vector3(0, 1.7, -34);
 
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
-             boat3D, boatDock, boatFar, dust, godRays, center: B.Vector3.Zero() };
+             boat3D, boatDock, boatFar, dust, godRays, scarabs, center: B.Vector3.Zero() };
   }
 
   global.World = { build };

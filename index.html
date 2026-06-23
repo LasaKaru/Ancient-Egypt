@@ -24,6 +24,9 @@
     <div class="track"><div class="fill" id="bossFill"></div></div>
   </div>
 
+  <!-- Scarab collectible counter -->
+  <div id="scarabHud"><span class="ico">🪲</span> <span id="scarabCount">0 / 5</span></div>
+
   <!-- Bottom instructions -->
   <div id="instructions">Loading the temple…</div>
 
@@ -48,7 +51,8 @@
     <div class="menu-title">WHISPERS<span>OF THE</span>FRESCO</div>
     <div class="menu-sub">A Low-Poly Tale of Ancient Egypt</div>
     <div class="menu-buttons">
-      <button class="mbtn" id="btnPlay">PLAY</button>
+      <button class="mbtn" id="btnContinue">CONTINUE</button>
+      <button class="mbtn" id="btnPlay">NEW GAME</button>
       <button class="mbtn ghost" id="btnSettings">SETTINGS</button>
       <button class="mbtn ghost" id="btnCredits">CREDITS</button>
     </div>
@@ -107,6 +111,20 @@
       </div>
       <div class="panel-actions">
         <button class="mbtn" id="btnCreditsBack">BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Inventory ===== -->
+  <div id="inventory" class="screen hidden">
+    <div class="panel-box">
+      <h2>Inventory</h2>
+      <div class="inv-section">Sacred Scarabs</div>
+      <div class="inv-grid" id="invScarabs"></div>
+      <div class="inv-section">Companions Awakened</div>
+      <div class="inv-grid" id="invCompanions"></div>
+      <div class="panel-actions">
+        <button class="mbtn" id="btnInvClose">CLOSE</button>
       </div>
     </div>
   </div>

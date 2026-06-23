@@ -424,6 +424,20 @@
     return root;
   }
 
+  // ---------- collectible scarab ----------
+  function scarab(pos) {
+    const root = new B.TransformNode("scarab", _scene);
+    root.position = pos.clone();
+    const gold = mat("#e8b23a", "#a8730a", 0.7), teal = mat("#1f8f7e", "#0c5a4e", 0.5);
+    const body = lowSphere(0.5, 1, gold, "scBody"); body.parent = root; body.scaling.set(1, 0.55, 1.3);
+    const wl = box(0.24, 0.12, 0.42, teal, "scWL"); flat(wl); wl.parent = root; wl.position.set(-0.12, 0.13, -0.02); wl.rotation.z = 0.25;
+    const wr = box(0.24, 0.12, 0.42, teal, "scWR"); flat(wr); wr.parent = root; wr.position.set(0.12, 0.13, -0.02); wr.rotation.z = -0.25;
+    const head = lowSphere(0.24, 1, gold, "scHead"); head.parent = root; head.position.set(0, 0.06, 0.34);
+    root.scaling.setAll(0.85);
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; });
+    return root;
+  }
+
   // ---------- a single low-poly candle (flame; light optional) ----------
   function candle(pos, h, withLight) {
     h = h || 0.5;
@@ -445,6 +459,6 @@
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
-    flashlight, candle, boat, mountain, mesa, bird,
+    flashlight, candle, boat, mountain, mesa, bird, scarab,
   };
 })(window);

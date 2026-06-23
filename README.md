@@ -39,11 +39,17 @@ The game is a static site with **no build step**.
 - Or just open `index.html` directly in a modern browser (needs internet for
   the Babylon.js CDN).
 
-On launch you get a **HelaO2 Studio** intro, then the **main menu** (Play /
-Settings / Credits) over a slowly orbiting view of the world. **Settings**
-(master volume, mute, look sensitivity, FOV, graphics quality, fog) apply live
-and are saved to `localStorage`. Press **Esc** in-game for the **pause menu**
-(Resume / Settings / Main Menu).
+On launch you get a **HelaO2 Studio** intro, then the **main menu**
+(Continue / New Game / Settings / Credits) over a slowly orbiting view of the
+world. **Settings** (master volume, mute, look sensitivity, FOV, graphics
+quality, fog) apply live and are saved to `localStorage`. Press **Esc** in-game
+for the **pause menu** (Resume / Settings / Main Menu) and **I** for the
+**inventory**.
+
+Progress **auto-saves** (objectives, opened door/light, defeated boss,
+companions, collected scarabs); **Continue** appears on the menu when a save
+exists. Find the **5 hidden Sacred Scarabs** scattered around the world —
+walk near one to collect it.
 
 ## Controls
 
@@ -56,6 +62,7 @@ and are saved to `localStorage`. Press **Esc** in-game for the **pause menu**
 | Exit a painting | `E` | ✕ button |
 | Strike the guardian | Click / `Space` | ⚔ button |
 | Pause | `Esc` | — |
+| Inventory | `I` | — |
 
 ## The mechanic
 

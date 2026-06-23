@@ -27,6 +27,9 @@
     btnPlay: $("btnPlay"), btnSettings: $("btnSettings"), btnCredits: $("btnCredits"),
     btnSettingsBack: $("btnSettingsBack"), btnCreditsBack: $("btnCreditsBack"),
     btnResume: $("btnResume"), btnPauseSettings: $("btnPauseSettings"), btnMainMenu: $("btnMainMenu"),
+    btnContinue: $("btnContinue"), btnPlay: $("btnPlay"),
+    inventory: $("inventory"), invScarabs: $("invScarabs"), invCompanions: $("invCompanions"),
+    btnInvClose: $("btnInvClose"), scarabHud: $("scarabHud"), scarabCount: $("scarabCount"),
     // settings inputs
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
@@ -205,6 +208,7 @@
     const def = mural.metadata.def;
     if (state.mode !== "3d") return;
     if (def.puzzle === "boss") {
+      if (state.objectives.boss) { toast("The guardian has been vanquished.", 1800); return; }
       if (!canActivate(def)) { toast("The guardian sleeps…", 1800);
         setInstr("Restore the light and open the door before the guardian will wake."); return; }
       startBossFight(def); return;
@@ -366,6 +370,7 @@
       peelOff(def, { cloth: "#efe6cf", skin: "#c8854f", hair: "#2c1d0f" });
     }
     renderObjectives();
+    saveGame();
     setTimeout(() => setInstr("Press " + (isTouch ? "✕" : "E") + " to return to the temple."), 600);
     if (state.objectives.door && state.objectives.light)
       setTimeout(() => toast("A growl echoes from the left wall…", 2600), 2600);
@@ -402,9 +407,19 @@
     api.root.scaling.set(1, 1, 0.05);
     const to = from.add(out.scale(2.6)); to.y = heightAt(to.x, to.z);
     state.companions.push({
-      api, offset: 2.2 + state.companions.length * 0.8, bob: Math.random() * 6,
+      api, colors, offset: 2.2 + state.companions.length * 0.8, bob: Math.random() * 6,
       peel: { t: 0, dur: 1.4, from, to },
     });
+  }
+
+  // recreate a companion instantly (used when loading a save)
+  function spawnCompanion(colors) {
+    const api = LP.humanoid(colors || {});
+    const a = state.companions.length;
+    const pos = world.spawn.clone();
+    pos.x += (a % 2 ? 1.2 : -1.2); pos.y = heightAt(pos.x, pos.z);
+    api.root.position = pos;
+    state.companions.push({ api, colors, offset: 2.2 + a * 0.8, bob: Math.random() * 6 });
   }
 
   function updateCompanions(dt) {
@@ -580,7 +595,7 @@
 
   function defeatBoss() {
     const b = state.boss; Sound.bossDown();
-    state.objectives.boss = true; renderObjectives();
+    state.objectives.boss = true; renderObjectives(); saveGame();
     toast("THE GUARDIAN IS VANQUISHED", 3200);
     dom.bossBar.style.display = "none";
     const g = b.g, startT = performance.now();
@@ -669,10 +684,17 @@
     if (state.mode === "3d" && document.pointerLockElement !== canvas) canvas.requestPointerLock();
   });
 
-  // Esc toggles pause during gameplay
+  // Esc = pause/back, I = inventory (handled at window level so it works unlocked)
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && state.started && state.mode !== "2d") {
-      if (state.paused) resumeGame(); else pauseGame();
+    if (!state.started) return;
+    const k = e.key.toLowerCase();
+    if (k === "i" && state.mode !== "2d") { toggleInventory(); return; }
+    if (e.key === "Escape") {
+      if (state.mode === "2d") return;
+      if (!dom.settings.classList.contains("hidden")) { showScreen(settingsReturn === "pause" ? "pause" : "menu"); return; }
+      if (currentOverlay === "inventory") closeOverlay();
+      else if (currentOverlay === "pause") resumeGame();
+      else pauseGame();
     }
   });
 
@@ -714,6 +736,7 @@
     if (state.mode === "2d") { update2D(dt); return; }
 
     groundCamera();
+    checkScarabPickup();
     if (state.mode === "boss") { updateBoss(dt); return; }
 
     // 3d: crosshair + contextual hint
@@ -772,61 +795,159 @@
   dom.setFog.addEventListener("change", () => { settings.fog = dom.setFog.checked; applySettings(); saveSettings(); });
 
   // ============================================================
+  // SCARABS + INVENTORY
+  // ============================================================
+  function updateScarabHud() {
+    const got = world.scarabs.filter((s) => s.collected).length;
+    dom.scarabCount.textContent = got + " / " + world.scarabs.length;
+  }
+  function checkScarabPickup() {
+    world.scarabs.forEach((s) => {
+      if (s.collected) return;
+      const dx = camera.position.x - s.root.position.x, dz = camera.position.z - s.root.position.z;
+      if (dx * dx + dz * dz < 2.6 * 2.6) {
+        s.collected = true; s.root.setEnabled(false);
+        Sound.lightUp();
+        updateScarabHud();
+        const got = world.scarabs.filter((x) => x.collected).length;
+        toast("Sacred Scarab found!  (" + got + "/" + world.scarabs.length + ")", 1800);
+        saveGame();
+        if (currentOverlay === "inventory") buildInventory();
+      }
+    });
+  }
+  function buildInventory() {
+    const total = world.scarabs.length, got = world.scarabs.filter((s) => s.collected).length;
+    dom.invScarabs.innerHTML = "";
+    for (let i = 0; i < total; i++) {
+      const slot = document.createElement("div");
+      slot.className = "inv-slot " + (i < got ? "filled" : "empty");
+      slot.textContent = i < got ? "🪲" : "";
+      dom.invScarabs.appendChild(slot);
+    }
+    dom.invCompanions.innerHTML = "";
+    if (state.companions.length === 0) {
+      const n = document.createElement("div"); n.className = "inv-empty-note";
+      n.textContent = "None yet — solve frescoes to awaken allies."; dom.invCompanions.appendChild(n);
+    } else {
+      state.companions.forEach(() => {
+        const slot = document.createElement("div"); slot.className = "inv-slot filled"; slot.textContent = "🧍";
+        dom.invCompanions.appendChild(slot);
+      });
+    }
+  }
+
+  // ============================================================
+  // SAVE / LOAD
+  // ============================================================
+  const SAVE_KEY = "wotf_save";
+  const findDef = (id) => muralDefs.find((d) => d.id === id);
+  function hasSave() { return !!localStorage.getItem(SAVE_KEY); }
+  function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+  function loadSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } }
+  function saveGame() {
+    if (!state.started) return;
+    const data = {
+      v: 1,
+      obj: { door: !!state.objectives.door, light: !!state.objectives.light, boss: !!state.objectives.boss },
+      solved: { nile: !!(findDef("nile") || {}).solved, climb: !!(findDef("climb") || {}).solved, boat: !!(findDef("boat") || {}).solved },
+      companions: state.companions.map((c) => c.colors || {}),
+      scarabs: world.scarabs.filter((s) => s.collected).map((s) => s.id),
+      cam: { p: [camera.position.x, camera.position.y, camera.position.z], r: [camera.rotation.x, camera.rotation.y, camera.rotation.z] },
+    };
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+  function applyLoad(d) {
+    if (!d) return;
+    state.objectives = { door: !!d.obj.door, light: !!d.obj.light, boss: !!d.obj.boss };
+    ["nile", "climb", "boat"].forEach((id) => { const def = findDef(id); if (def && d.solved && d.solved[id]) def.solved = true; });
+    if (state.objectives.door) { door.position.y = 6.2; door.checkCollisions = false; }
+    if (state.objectives.light) { torches.forEach((t) => { t.light.intensity = 1.4; }); world.hemi.intensity = 0.8; }
+    if (d.solved && d.solved.boat && world.boat3D) { world.boat3D.position.x = world.boatFar.x; world.boat3D.position.z = world.boatFar.z; }
+    if (d.obj.boss) { const a = findDef("anubis"); if (a) a.mesh.material.emissiveColor = new B.Color3(0.3, 0.12, 0.04); }
+    (d.companions || []).forEach((col) => spawnCompanion(col));
+    (d.scarabs || []).forEach((id) => { const s = world.scarabs.find((x) => x.id === id); if (s) { s.collected = true; s.root.setEnabled(false); } });
+    if (d.cam) { camera.position = new B.Vector3(d.cam.p[0], d.cam.p[1], d.cam.p[2]); camera.rotation = new B.Vector3(d.cam.r[0], d.cam.r[1], d.cam.r[2]); }
+    updateScarabHud();
+    renderObjectives();
+  }
+
+  // ============================================================
   // SCREEN / MENU FLOW
   // ============================================================
-  const screens = ["splash", "menu", "settings", "credits", "pause"];
+  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory"];
   function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
   let settingsReturn = "menu";
+  let currentOverlay = null; // "pause" | "inventory" | null (in-game overlays)
 
   function openSettings(ret) { settingsReturn = ret; bindSettingsUI(); showScreen("settings"); }
 
+  function showMenu() {
+    dom.btnContinue.style.display = hasSave() ? "block" : "none";
+    showScreen("menu");
+  }
   function runIntro() {
     applySettings();
-    if (sessionStorage.getItem("wotf_skipIntro")) { showScreen("menu"); return; }
+    updateScarabHud();
+    if (sessionStorage.getItem("wotf_skipIntro")) { showMenu(); return; }
     showScreen("splash");
-    setTimeout(() => { sessionStorage.setItem("wotf_skipIntro", "1"); showScreen("menu"); }, 3800);
+    setTimeout(() => { sessionStorage.setItem("wotf_skipIntro", "1"); showMenu(); }, 3800);
   }
 
-  function startGame() {
+  function startGame(saveData) {
     if (state.started) return;
     state.started = true;
     Sound.init();
     applySettings();
     showScreen(null);
+    currentOverlay = null;
     document.body.classList.add("playing");
     scene.activeCamera = camera;
     camera.position = world.spawn.clone();
     camera.attachControl(canvas, true);
     flashlight.setEnabled(true); flashSpot.setEnabled(true);
     dom.crosshair.style.display = "block";
+    if (saveData) applyLoad(saveData); else updateScarabHud();
     renderObjectives();
     showTouch(isTouch);
     setInstr(defaultInstr());
     if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
   }
 
-  function pauseGame() {
-    if (!state.started || state.paused || state.mode === "2d") return;
-    state.paused = true;
-    showScreen("pause");
+  // in-game overlays (pause / inventory) share the freeze + pointer logic
+  function openOverlay(name) {
+    currentOverlay = name; state.paused = true;
+    if (name === "inventory") buildInventory();
+    showScreen(name);
     document.exitPointerLock && document.exitPointerLock();
   }
-  function resumeGame() {
-    if (!state.paused) return;
-    state.paused = false;
+  function closeOverlay() {
+    currentOverlay = null; state.paused = false;
     showScreen(null);
     if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
   }
+  function pauseGame() {
+    if (!state.started || state.paused || state.mode === "2d") return;
+    openOverlay("pause");
+  }
+  function resumeGame() { if (currentOverlay) { saveGame(); closeOverlay(); } }
+  function toggleInventory() {
+    if (!state.started || state.mode === "2d") return;
+    if (currentOverlay === "inventory") closeOverlay();
+    else if (!currentOverlay) openOverlay("inventory");
+  }
 
   // wire buttons
-  dom.btnPlay.addEventListener("click", startGame);
+  dom.btnContinue.addEventListener("click", () => startGame(loadSave()));
+  dom.btnPlay.addEventListener("click", () => { clearSave(); startGame(null); });
   dom.btnSettings.addEventListener("click", () => openSettings("menu"));
   dom.btnCredits.addEventListener("click", () => showScreen("credits"));
   dom.btnSettingsBack.addEventListener("click", () => showScreen(settingsReturn === "pause" ? "pause" : "menu"));
   dom.btnCreditsBack.addEventListener("click", () => showScreen("menu"));
   dom.btnResume.addEventListener("click", resumeGame);
   dom.btnPauseSettings.addEventListener("click", () => openSettings("pause"));
-  dom.btnMainMenu.addEventListener("click", () => { sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
+  dom.btnMainMenu.addEventListener("click", () => { saveGame(); sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
+  dom.btnInvClose.addEventListener("click", closeOverlay);
 
   // first user gesture anywhere enables audio (autoplay policy)
   window.addEventListener("pointerdown", () => Sound.init(), { once: true });
