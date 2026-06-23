@@ -430,6 +430,45 @@
     ctx.restore();
   }
 
+  // A full standing Anubis figure that fits a portrait box [0..W, 0..H]
+  // (transparent bg) — used for the 2D boss sprite.
+  function drawAnubisFigure(ctx, W, H) {
+    const cx = W / 2;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    // legs
+    ctx.fillStyle = PAL.black;
+    ctx.fillRect(cx - 34, H * 0.72, 26, H * 0.24);
+    ctx.fillRect(cx + 8, H * 0.72, 26, H * 0.24);
+    // kilt
+    ctx.fillStyle = PAL.gold;
+    ctx.beginPath();
+    ctx.moveTo(cx - 40, H * 0.58); ctx.lineTo(cx + 40, H * 0.58);
+    ctx.lineTo(cx + 46, H * 0.74); ctx.lineTo(cx - 46, H * 0.74); ctx.closePath(); ctx.fill();
+    // torso
+    ctx.fillStyle = PAL.black;
+    ctx.fillRect(cx - 36, H * 0.34, 72, H * 0.26);
+    // arms
+    ctx.fillRect(cx - 58, H * 0.35, 22, H * 0.22);
+    ctx.fillRect(cx + 36, H * 0.35, 22, H * 0.22);
+    // jackal head
+    ctx.fillStyle = PAL.black;
+    ctx.fillRect(cx - 30, H * 0.16, 60, H * 0.16); // skull
+    ctx.beginPath(); // snout
+    ctx.moveTo(cx + 26, H * 0.2); ctx.lineTo(cx + 64, H * 0.25);
+    ctx.lineTo(cx + 26, H * 0.29); ctx.closePath(); ctx.fill();
+    // ears
+    ctx.beginPath();
+    ctx.moveTo(cx - 26, H * 0.16); ctx.lineTo(cx - 34, H * 0.06); ctx.lineTo(cx - 8, H * 0.15); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 26, H * 0.16); ctx.lineTo(cx + 18, H * 0.06); ctx.lineTo(cx + 4, H * 0.15); ctx.closePath(); ctx.fill();
+    // glowing violet eye
+    ctx.fillStyle = "#c79bff";
+    ctx.beginPath(); ctx.arc(cx + 16, H * 0.225, 6, 0, Math.PI * 2); ctx.fill();
+    // was-staff
+    ctx.strokeStyle = PAL.gold; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(cx + 58, H * 0.2); ctx.lineTo(cx + 58, H * 0.78); ctx.stroke();
+  }
+
   // Standalone "living" character texture (transparent bg) for the 2D figure
   // and for the peeled-off 3D companion sprite. `kind` selects appearance.
   function characterTexture(BABYLON, scene, kind) {
@@ -443,7 +482,7 @@
     if (kind === "boat") {
       drawReedBoat(ctx, W * 0.5, H * 0.6, 90, true);
     } else if (kind === "anubis") {
-      drawAnubisScene(ctx, W, H * 0.5); // reuse, scaled-ish
+      drawAnubisFigure(ctx, W, H);
     } else if (kind === "priest") {
       drawFigure(ctx, W * 0.5 - 80, 60, 160, 400, { tunic: PAL.white, arm: "up" });
     } else if (kind === "climber") {

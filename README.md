@@ -73,7 +73,12 @@ require to begin from a user gesture).
    peels off as an ally.
 3. **The Guardian of the Dead** — once the door is open and the light restored,
    the Anubis mural awakens as a glowing 3D **boss** in a candle-lit hall with
-   violet eyes. Strike it with Ra's light to cleanse the temple.
+   violet eyes. The fight has **three phases across both dimensions**:
+   - *Phase 1 (3D):* strike the advancing guardian with Ra's light.
+   - *Phase 2 (2D):* it flattens and flees into the back-wall fresco; strike
+     the **glowing heart** weak-spot when it surfaces along the wall.
+   - *Phase 3 (3D):* it bursts back out **enraged** (faster, magenta eyes) —
+     finish it to cleanse the temple.
 
 **Bonus — The Sacred Barque:** a fresco on the east wall. Sliding the painted
 barque drives a real low-poly **3D boat across the oasis** in real time
@@ -104,6 +109,5 @@ assets and runs from a single folder.
 
 - Multiple simultaneous 2D characters with collision.
 - Companion abilities (allies that help solve puzzles or fight).
-- A multi-phase boss that fights across both 2D and 3D.
 - More cross-dimension puzzles (gods that summon companions, levers, fire).
 - Loadable hi-res art and recorded audio to replace the procedural placeholders.

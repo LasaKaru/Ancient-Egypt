@@ -435,51 +435,138 @@
   // ============================================================
   // BOSS — low-poly guardian Anubis
   // ============================================================
+  // Three-phase fight: 3D melee → 2D fresco (strike the glowing heart) → enraged 3D.
+  const BOSS = { p1: 6, p2: 4, p3: 5 };
+  const EYE_VIOLET = B.Color3.FromHexString("#7a2dff").scale(1.6);
+  const EYE_RAGE = B.Color3.FromHexString("#ff3df0").scale(1.8);
+
   function startBossFight(def) {
     if (state.boss) return;
     Sound.bossRoar();
     state.mode = "boss";
     toast("THE GUARDIAN AWAKENS", 2600);
-    // fiery glow on the guardian's fresco
     def.mesh.material.emissiveColor = new B.Color3(0.7, 0.25, 0.05);
-    // dim the hall for the violet, candle-lit reveal
-    world.hemi.intensity = 0.28;
+    world.hemi.intensity = 0.28; // dim hall for the violet, candle-lit reveal
 
-    const g = LP.guardian();
-    const arena = new B.Vector3(0, 0, 5);
-    g.root.position.set(arena.x, heightAt(arena.x, arena.z), arena.z);
-    state.boss = { g, hp: 10, maxHp: 10, hitCd: 0, attackCd: 3.5, t: 0 };
+    const total = BOSS.p1 + BOSS.p2 + BOSS.p3;
+    state.boss = {
+      phase: 0, g: null, painted: null, weak: null,
+      total, hpLeft: total, hitCd: 0, t: 0, attackCd: 3.5,
+      transitioning: false, arena: new B.Vector3(0, 0, 5),
+      slideDir: 1, weakTimer: 1.6, weakOn: false,
+    };
 
-    // ring of floor candles around the arena (emissive only, to stay in light budget)
+    // ring of floor candles (emissive only, to stay in the light budget)
     const R = 4.4;
     for (let i = 0; i < 14; i++) {
       const a = (i / 14) * Math.PI * 2;
-      const px = arena.x + Math.cos(a) * R, pz = arena.z + Math.sin(a) * R;
+      const px = state.boss.arena.x + Math.cos(a) * R, pz = state.boss.arena.z + Math.sin(a) * R;
       const c = LP.candle(new B.Vector3(px, heightAt(px, pz), pz), 0.4 + Math.random() * 0.2, false);
       state.bossProps.push(c.root);
     }
 
     dom.bossBar.style.display = "block";
+    spawn3DGuardian(false);
+    state.boss.phase = 1;
     updateBossBar();
-    setInstr(isTouch ? "Tap ⚔ to strike the guardian while it is in view!"
+    setInstr(isTouch ? "Tap ⚔ to strike the guardian!"
                      : "Click (or SPACE) to strike the guardian with Ra's light!");
     if (!isTouch && document.pointerLockElement !== canvas) canvas.requestPointerLock();
   }
 
+  function spawn3DGuardian(enraged) {
+    const g = LP.guardian();
+    const a = state.boss.arena;
+    g.root.position.set(a.x, heightAt(a.x, a.z), a.z);
+    g.eyeMat.emissiveColor = enraged ? EYE_RAGE.clone() : EYE_VIOLET.clone();
+    if (enraged) g.glow.diffuse = new B.Color3(1, 0.2, 0.9);
+    state.boss.g = g;
+  }
+
+  // Phase 2 — the guardian flattens and flees into the back-wall fresco
+  function enterPhase2() {
+    const b = state.boss; b.transitioning = true;
+    toast("Anubis flees into the fresco!", 2400); Sound.bossRoar();
+    const g = b.g, startT = performance.now(), z0 = g.root.position.z;
+    const anim = () => {
+      const k = Math.min(1, (performance.now() - startT) / 900);
+      g.root.scaling.z = 1 - 0.96 * k;
+      g.glow.intensity = 1.8 * (1 - k);
+      g.root.position.z = z0 + (10.4 - z0) * k; // drift to the wall
+      if (k < 1) requestAnimationFrame(anim);
+      else { g.root.dispose(); b.g = null; buildPaintedBoss(); }
+    };
+    anim();
+  }
+
+  function buildPaintedBoss() {
+    const b = state.boss;
+    const plane = B.MeshBuilder.CreatePlane("paintedBoss",
+      { width: 2.6, height: 4.0, sideOrientation: B.Mesh.DOUBLESIDE }, scene);
+    plane.parent = walls.backWall;
+    plane.position = new B.Vector3(0, 0.4, 0.42);
+    const m = new B.StandardMaterial("pbMat", scene);
+    m.diffuseTexture = Art.characterTexture(B, scene, "anubis");
+    m.diffuseTexture.hasAlpha = true; m.useAlphaFromDiffuseTexture = true;
+    m.specularColor = new B.Color3(0, 0, 0);
+    m.emissiveColor = new B.Color3(0.5, 0.28, 0.6);
+    m.backFaceCulling = false; m.maxSimultaneousLights = 8;
+    plane.material = m;
+    // glowing "heart" weak-spot — only pickable while lit
+    const weak = LP.lowSphere(0.5, 1, LP.mat("#ff6bf0", "#ff1ad0", 1.6), "bossWeak");
+    weak.parent = plane; weak.position.set(0, -0.1, 0.08);
+    weak.metadata = { weakHit: true }; weak.visibility = 0; weak.isPickable = false;
+    b.painted = plane; b.weak = weak;
+    b.weakOn = false; b.weakTimer = 1.4; b.slideDir = 1; b.phase = 2; b.transitioning = false;
+    setInstr(isTouch ? "Strike the glowing heart when Anubis surfaces!"
+                     : "Strike the glowing heart (click/SPACE) when it appears!");
+  }
+
+  // Phase 3 — the guardian bursts back out, enraged
+  function enterPhase3() {
+    const b = state.boss; b.transitioning = true;
+    toast("THE GUARDIAN RETURNS — ENRAGED", 2600); Sound.bossRoar();
+    if (b.painted) { b.painted.dispose(); b.painted = null; b.weak = null; }
+    spawn3DGuardian(true);
+    b.phase = 3; b.transitioning = false;
+    setInstr(isTouch ? "Finish the guardian — tap ⚔!" : "Finish the guardian — click/SPACE!");
+  }
+
   function updateBossBar() {
-    dom.bossFill.style.width = Math.max(0, (state.boss.hp / state.boss.maxHp) * 100) + "%";
+    dom.bossFill.style.width = Math.max(0, (state.boss.hpLeft / state.boss.total) * 100) + "%";
+  }
+
+  function flashEyes() {
+    const b = state.boss; if (!b.g) return;
+    b.g.eyeMat.emissiveColor = new B.Color3(1, 1, 0.8);
+    setTimeout(() => {
+      if (state.boss && state.boss.g)
+        state.boss.g.eyeMat.emissiveColor = (state.boss.phase === 3 ? EYE_RAGE : EYE_VIOLET).clone();
+    }, 90);
+  }
+
+  function damageBoss() {
+    const b = state.boss; b.hpLeft -= 1; b.hitCd = 0.32; Sound.hit(); updateBossBar();
+    if (b.phase === 1 && b.hpLeft <= BOSS.p2 + BOSS.p3) { enterPhase2(); return; }
+    if (b.phase === 2 && b.hpLeft <= BOSS.p3) { enterPhase3(); return; }
+    if (b.hpLeft <= 0) defeatBoss();
   }
 
   function hitBoss() {
-    const b = state.boss; if (!b || b.hitCd > 0 || b.hp <= 0) return;
-    const ray = camera.getForwardRay(24);
-    const pick = scene.pickWithRay(ray, (m) => m.metadata && m.metadata.bossHit);
-    const dist = B.Vector3.Distance(camera.position, b.g.root.position);
-    if (!pick.hit || dist > 16) { setInstr("Face the guardian to strike it!"); return; }
-    b.hp -= 1; b.hitCd = 0.32; Sound.hit(); updateBossBar();
-    b.g.eyeMat.emissiveColor = new B.Color3(1, 1, 0.8);
-    setTimeout(() => { if (state.boss) b.g.eyeMat.emissiveColor = B.Color3.FromHexString("#ff8a1a").scale(1.4); }, 90);
-    if (b.hp <= 0) defeatBoss();
+    const b = state.boss; if (!b || b.transitioning || b.hitCd > 0) return;
+    if (b.phase === 1 || b.phase === 3) {
+      if (!b.g) return;
+      const pick = scene.pickWithRay(camera.getForwardRay(24), (m) => m.metadata && m.metadata.bossHit);
+      if (!pick.hit) { setInstr("Face the guardian to strike it!"); return; }
+      if (B.Vector3.Distance(camera.position, b.g.root.position) > 16) { setInstr("Get closer to strike!"); return; }
+      damageBoss(); flashEyes();
+    } else if (b.phase === 2) {
+      if (!b.weakOn) { setInstr("Wait for the glowing heart to surface!"); return; }
+      const pick = scene.pickWithRay(camera.getForwardRay(30), (m) => m.metadata && m.metadata.weakHit);
+      if (!pick.hit) { setInstr("Aim at the glowing heart!"); return; }
+      damageBoss();
+      b.weakOn = false; b.weak.visibility = 0; b.weak.isPickable = false; b.weakTimer = 0.8 + Math.random();
+    }
   }
 
   function defeatBoss() {
@@ -487,17 +574,16 @@
     state.objectives.boss = true; renderObjectives();
     toast("THE GUARDIAN IS VANQUISHED", 3200);
     dom.bossBar.style.display = "none";
-    const startT = performance.now();
+    const g = b.g, startT = performance.now();
     const anim = () => {
       const k = Math.min(1, (performance.now() - startT) / 1400);
-      b.g.root.scaling.setAll(1 - k);
-      b.g.glow.intensity = 1.8 * (1 - k);
+      if (g) { g.root.scaling.setAll(1 - k); g.glow.intensity = 1.8 * (1 - k); }
       if (k < 1) requestAnimationFrame(anim);
       else {
-        b.g.root.dispose();
+        if (g) g.root.dispose();
         state.bossProps.forEach((p) => p.dispose());
         state.bossProps = [];
-        world.hemi.intensity = 0.8; // restore light
+        world.hemi.intensity = 0.8;
         state.boss = null; state.mode = "3d";
         setInstr("You have cleansed the temple. Explore freely — the path beyond is open.");
         setTimeout(() => toast("✦  TEMPLE CLEANSED  ✦", 3600), 1000);
@@ -509,18 +595,37 @@
   function updateBoss(dt) {
     const b = state.boss; if (!b) return;
     b.t += dt; b.hitCd = Math.max(0, b.hitCd - dt);
-    b.g.update(dt);
-    const ground = heightAt(b.g.root.position.x, b.g.root.position.z);
-    b.g.root.position.y = ground + Math.sin(b.t * 2) * 0.15;
-    const toP = camera.position.subtract(b.g.root.position); toP.y = 0;
-    const d = toP.length();
-    if (d > 5) { toP.normalize(); b.g.root.position.addInPlace(toP.scale(dt * 0.8));
-      b.g.root.rotation.y = Math.atan2(toP.x, toP.z); }
-    b.attackCd -= dt;
-    if (b.attackCd <= 0) {
-      b.attackCd = 4 + Math.random() * 2; Sound.bossRoar();
-      scene.fogColor = B.Color3.FromHexString("#7a2a12");
-      setTimeout(() => { scene.fogColor = B.Color3.FromHexString("#caa07a"); }, 500);
+    if (b.transitioning) return;
+
+    if (b.phase === 1 || b.phase === 3) {
+      const g = b.g; if (!g) return;
+      g.update(dt);
+      const speed = b.phase === 3 ? 1.4 : 0.8;
+      g.root.position.y = heightAt(g.root.position.x, g.root.position.z) + Math.sin(b.t * 2) * 0.15;
+      const toP = camera.position.subtract(g.root.position); toP.y = 0;
+      if (toP.length() > 4.5) { toP.normalize(); g.root.position.addInPlace(toP.scale(dt * speed)); g.root.rotation.y = Math.atan2(toP.x, toP.z); }
+      b.attackCd -= dt;
+      if (b.attackCd <= 0) {
+        b.attackCd = (b.phase === 3 ? 2.5 : 4) + Math.random() * 2; Sound.bossRoar();
+        scene.fogColor = B.Color3.FromHexString("#7a2a12");
+        setTimeout(() => { scene.fogColor = B.Color3.FromHexString("#caa07a"); }, 500);
+      }
+    } else if (b.phase === 2) {
+      const p = b.painted; if (!p) return;
+      // slide along the wall (ping-pong)
+      p.position.x += b.slideDir * dt * 2.2;
+      if (p.position.x > 3.5) { p.position.x = 3.5; b.slideDir = -1; }
+      if (p.position.x < -3.5) { p.position.x = -3.5; b.slideDir = 1; }
+      // pulse the weak-spot on and off
+      b.weakTimer -= dt;
+      if (b.weakTimer <= 0) {
+        b.weakOn = !b.weakOn;
+        b.weakTimer = b.weakOn ? 2.0 : 1.2 + Math.random();
+        b.weak.visibility = b.weakOn ? 1 : 0;
+        b.weak.isPickable = b.weakOn;
+        if (b.weakOn) Sound.lightUp();
+      }
+      if (b.weakOn) b.weak.scaling.setAll(1 + Math.sin(b.t * 10) * 0.15);
     }
   }
 
