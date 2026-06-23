@@ -103,6 +103,7 @@
     [-7, 7].forEach((z) => {
       const jamb = LP.box(8, ROOM.h, 0.6, sandstone, "rightJamb"); LP.flat(jamb);
       jamb.position.set(ROOM.w / 2, hh, z); jamb.rotation.y = -Math.PI / 2; jamb.checkCollisions = true;
+      if (z === -7) walls.rightWall = jamb; // carries the barque fresco
     });
     const rLintel = LP.box(6, 1.4, 0.6, sandstoneDk, "rightLintel"); LP.flat(rLintel);
     rLintel.position.set(ROOM.w / 2, ROOM.h - 0.7, 0); rLintel.rotation.y = -Math.PI / 2; rLintel.checkCollisions = true;
@@ -231,6 +232,15 @@
     dust.minEmitPower = 0.02; dust.maxEmitPower = 0.08;
     dust.start();
 
+    // ---- the sacred barque on the oasis (driven by the barque fresco puzzle) ----
+    const boatDock = new B.Vector3(33, -0.35, -16);
+    const boatFar = new B.Vector3(43, -0.35, 0);
+    const boat3D = LP.boat(boatDock);
+    boat3D.rotation.y = Math.PI / 2;
+    scene.onBeforeRenderObservable.add(() => {
+      boat3D.position.y = -0.35 + Math.sin(performance.now() * 0.001) * 0.06; // gentle bob
+    });
+
     // ---- invisible world boundary ----
     const bound = B.MeshBuilder.CreateBox("bound", { width: 170, height: 30, depth: 170 }, scene);
     bound.checkCollisions = true; bound.flipFaces(true); bound.isVisible = false;
@@ -238,7 +248,8 @@
 
     const spawn = new B.Vector3(0, 1.7, -34);
 
-    return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight, center: B.Vector3.Zero() };
+    return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
+             boat3D, boatDock, boatFar, center: B.Vector3.Zero() };
   }
 
   global.World = { build };

@@ -277,6 +277,7 @@
     if (def.scene === "nile") drawNileScene(ctx, W, H);
     else if (def.scene === "sun") drawSunScene(ctx, W, H);
     else if (def.scene === "anubis") drawAnubisScene(ctx, W, H);
+    else if (def.scene === "barque") drawBarqueScene(ctx, W, H);
     else drawNileScene(ctx, W, H);
 
     tex.update();
@@ -333,6 +334,57 @@
     drawFigure(ctx, 560, 210, 130, 250, { tunic: PAL.white, arm: "up", stride: 0.2 });
   }
 
+  // a single reed boat (papyrus skiff) centred in [cx,cy] at scale s
+  function drawReedBoat(ctx, cx, cy, s, withSail) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    // crescent hull with upturned ends
+    ctx.fillStyle = PAL.red;
+    ctx.beginPath();
+    ctx.moveTo(-1.5 * s, 0);
+    ctx.quadraticCurveTo(-1.7 * s, -0.7 * s, -1.9 * s, -0.9 * s);
+    ctx.quadraticCurveTo(-1.0 * s, -0.2 * s, 0, -0.18 * s);
+    ctx.quadraticCurveTo(1.0 * s, -0.2 * s, 1.9 * s, -0.9 * s);
+    ctx.quadraticCurveTo(1.7 * s, -0.7 * s, 1.5 * s, 0);
+    ctx.quadraticCurveTo(0, 0.5 * s, -1.5 * s, 0);
+    ctx.fill();
+    // lashing lines
+    ctx.strokeStyle = "rgba(40,25,12,0.5)"; ctx.lineWidth = Math.max(1, 0.04 * s);
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(i * 0.5 * s, -0.1 * s); ctx.lineTo(i * 0.5 * s, 0.28 * s); ctx.stroke();
+    }
+    if (withSail) {
+      ctx.strokeStyle = PAL.ink; ctx.lineWidth = Math.max(2, 0.06 * s);
+      ctx.beginPath(); ctx.moveTo(0, -0.18 * s); ctx.lineTo(0, -1.5 * s); ctx.stroke();
+      ctx.fillStyle = PAL.white;
+      ctx.fillRect(0.05 * s, -1.45 * s, 0.9 * s, 1.0 * s);
+      ctx.strokeStyle = "rgba(40,25,12,0.3)";
+      ctx.strokeRect(0.05 * s, -1.45 * s, 0.9 * s, 1.0 * s);
+    }
+    ctx.restore();
+  }
+
+  function drawBarqueScene(ctx, W, H) {
+    // water band
+    ctx.fillStyle = "rgba(47,111,143,0.25)";
+    ctx.fillRect(40, H * 0.5, W - 80, H * 0.4);
+    ctx.strokeStyle = PAL.blue; ctx.lineWidth = 4;
+    for (let k = 0; k < 4; k++) {
+      ctx.beginPath();
+      let yy = H * 0.55 + k * 18;
+      ctx.moveTo(60, yy);
+      for (let xx = 60; xx < W - 60; xx += 44) ctx.quadraticCurveTo(xx + 22, yy - 9, xx + 44, yy);
+      ctx.stroke();
+    }
+    // sun
+    ctx.fillStyle = PAL.gold;
+    ctx.beginPath(); ctx.arc(W - 150, 150, 38, 0, Math.PI * 2); ctx.fill();
+    // the barque mid-river
+    drawReedBoat(ctx, W * 0.5, H * 0.62, 70, true);
+    // a standing boatman
+    drawFigure(ctx, W * 0.5 + 30, H * 0.3, 90, 170, { tunic: PAL.white, arm: "fwd", stride: 0.1 });
+  }
+
   function drawAnubisScene(ctx, W, H) {
     const cx = W * 0.5, baseY = H * 0.86;
     ctx.save();
@@ -381,13 +433,16 @@
   // Standalone "living" character texture (transparent bg) for the 2D figure
   // and for the peeled-off 3D companion sprite. `kind` selects appearance.
   function characterTexture(BABYLON, scene, kind) {
-    const W = 256, H = 512;
+    // boats are wide, so use a landscape canvas for them
+    const W = kind === "boat" ? 512 : 256, H = kind === "boat" ? 256 : 512;
     const tex = new BABYLON.DynamicTexture("char_" + kind, { width: W, height: H }, scene, true);
     tex.hasAlpha = true;
     const ctx = tex.getContext();
     ctx.clearRect(0, 0, W, H);
 
-    if (kind === "anubis") {
+    if (kind === "boat") {
+      drawReedBoat(ctx, W * 0.5, H * 0.6, 90, true);
+    } else if (kind === "anubis") {
       drawAnubisScene(ctx, W, H * 0.5); // reuse, scaled-ish
     } else if (kind === "priest") {
       drawFigure(ctx, W * 0.5 - 80, 60, 160, 400, { tunic: PAL.white, arm: "up" });

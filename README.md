@@ -68,11 +68,21 @@ require to begin from a user gesture).
 1. **Daily Life on the Nile** — walk the worker to the rope to raise the
    sealed eastern door (opening the way to the oasis). → worker peels off as an
    ally.
-2. **The Journey of Ra** — carry the sun-disk to the horizon to flood the dark
-   temple with light. → priest peels off as an ally.
+2. **The Painted Climber** — a frescoed pillar; *climb* the figure (vertical 2D
+   mechanic) to the sun-disk at the top to flood the temple with light. → priest
+   peels off as an ally.
 3. **The Guardian of the Dead** — once the door is open and the light restored,
-   the Anubis mural awakens as a glowing 3D **boss**. Strike it with Ra's light
-   to cleanse the temple.
+   the Anubis mural awakens as a glowing 3D **boss** in a candle-lit hall with
+   violet eyes. Strike it with Ra's light to cleanse the temple.
+
+**Bonus — The Sacred Barque:** a fresco on the east wall. Sliding the painted
+barque drives a real low-poly **3D boat across the oasis** in real time
+(cross-dimension link) — the headline "2D action changes the 3D world" idea.
+
+Figures **peel off the wall** with an animation (they emerge from the plane,
+gaining 3D depth) and then follow you as low-poly companions. The player also
+carries a **first-person flashlight**, and the temple has god-ray shafts and
+floating dust.
 
 ## Project layout
 
@@ -92,10 +102,8 @@ assets and runs from a single folder.
 
 ## Roadmap / ideas
 
-- More murals & puzzle types (a boat that moves a real 3D boat; gods that
-  summon companions).
-- Richer peel-off animation and companion abilities.
 - Multiple simultaneous 2D characters with collision.
-- Light/torch puzzles solvable only from the 2D side.
+- Companion abilities (allies that help solve puzzles or fight).
 - A multi-phase boss that fights across both 2D and 3D.
+- More cross-dimension puzzles (gods that summon companions, levers, fire).
 - Loadable hi-res art and recorded audio to replace the procedural placeholders.

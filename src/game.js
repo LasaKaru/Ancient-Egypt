@@ -103,6 +103,10 @@
       wall: climbPillar, local: new B.Vector3(0, 0.0, -0.52), facing: Math.PI, size: { w: 0.95, h: 4.4 },
       puzzle: "climb", axis: "y", panel: true,
       hint: "Climb the painted figure to the sun-disk at the top to flood the temple with light." },
+    { id: "boat", title: "The Sacred Barque", scene: "barque", char: "boat",
+      wall: walls.rightWall, local: new B.Vector3(0, 0.3, 0.33), size: { w: 6, h: 3.2 },
+      puzzle: "walk", axis: "x",
+      hint: "Slide the painted barque across the river — the real boat sails the oasis." },
     { id: "anubis", title: "The Guardian of the Dead", scene: "anubis", char: "anubis",
       wall: walls.leftWall, local: new B.Vector3(0, 0.4, 0.33), size: { w: 5, h: 3.6 },
       puzzle: "boss", gated: true, hint: "The guardian stirs. Press E to face Anubis." },
@@ -117,8 +121,10 @@
     if (def.facing != null) m.rotation.y = def.facing;
     const mat = new B.StandardMaterial("muralMat_" + def.id, scene);
     mat.diffuseTexture = def.panel ? Art.glyphPanelTexture(B, scene, def.id) : Art.muralTexture(B, scene, def);
-    // the back wall is rotated 180°, which mirrors its texture — flip U so text reads correctly
-    if (def.wall === walls.backWall && !def.panel) { mat.diffuseTexture.uScale = -1; mat.diffuseTexture.uOffset = 1; }
+    // some walls are rotated such that their texture appears mirrored — flip U so text reads correctly
+    if ((def.wall === walls.backWall || def.wall === walls.rightWall) && !def.panel) {
+      mat.diffuseTexture.uScale = -1; mat.diffuseTexture.uOffset = 1;
+    }
     mat.specularColor = new B.Color3(0.1, 0.1, 0.1);
     mat.emissiveColor = new B.Color3(0.12, 0.1, 0.06);
     mat.maxSimultaneousLights = 8;
@@ -313,6 +319,14 @@
     // patch trails the figure
     if (state.patch) { state.patch.position.x = ch.position.x; state.patch.position.y = ch.position.y; }
 
+    // cross-dimension link: the painted barque drives the real 3D boat
+    const cur = state.currentMural.metadata.def;
+    if (cur.id === "boat" && world.boat3D) {
+      const prog = (v - meta.min) / (meta.max - meta.min);
+      const np = B.Vector3.Lerp(world.boatDock, world.boatFar, prog);
+      world.boat3D.position.x = np.x; world.boat3D.position.z = np.z;
+    }
+
     // camera pans to follow the figure (true side-scroller / climb feel)
     if (state.cam2D) {
       const fw = ch.getAbsolutePosition();
@@ -337,6 +351,10 @@
       state.objectives.light = true;
       toast("Ra's light floods the temple!", 2400);
       peelOff(def, { cloth: "#2f8f7e", skin: "#d99b63", hair: "#2c1d0f" });
+    } else if (def.id === "boat") {
+      // bonus puzzle — the barque has already sailed across via the live link
+      toast("The sacred barque reaches the far shore!", 2600);
+      peelOff(def, { cloth: "#efe6cf", skin: "#c8854f", hair: "#2c1d0f" });
     }
     renderObjectives();
     setTimeout(() => setInstr("Press " + (isTouch ? "✕" : "E") + " to return to the temple."), 600);
@@ -360,23 +378,41 @@
   // PEEL-OFF — painted figure becomes a low-poly 3D companion
   // ============================================================
   function peelOff(def, colors) {
+    Sound.whoosh();
     const api = LP.humanoid(colors);
     const wpos = (state.paintedChar ? state.paintedChar.getAbsolutePosition() : def.mesh.getAbsolutePosition()).clone();
-    api.root.position = new B.Vector3(wpos.x, heightAt(wpos.x, wpos.z), wpos.z);
-    // step out toward the room interior
+    const ground = heightAt(wpos.x, wpos.z);
+    const from = new B.Vector3(wpos.x, ground, wpos.z);
+    api.root.position = from.clone();
+    // direction out of the wall toward the room interior
     const out = world.center.subtract(new B.Vector3(wpos.x, 0, wpos.z)); out.y = 0;
     if (out.lengthSquared() < 0.01) out.set(0, 0, -1);
     out.normalize();
-    const land = new B.Vector3(wpos.x, 0, wpos.z).add(out.scale(2.4));
-    land.y = heightAt(land.x, land.z);
-    tweenPos(api.root, land, 1.2);
-    state.companions.push({ api, offset: 2.2 + state.companions.length * 0.8, bob: Math.random() * 6 });
+    api.root.rotation.y = Math.atan2(out.x, out.z);
+    // start paper-thin & flat against the wall, then gain depth as it peels off
+    api.root.scaling.set(1, 1, 0.05);
+    const to = from.add(out.scale(2.6)); to.y = heightAt(to.x, to.z);
+    state.companions.push({
+      api, offset: 2.2 + state.companions.length * 0.8, bob: Math.random() * 6,
+      peel: { t: 0, dur: 1.4, from, to },
+    });
   }
 
   function updateCompanions(dt) {
     state.companions.forEach((c, i) => {
       const root = c.api.root;
-      if (tweening(root)) { c.api.update(dt, true); root.position.y = heightAt(root.position.x, root.position.z); return; }
+      // peel-off: emerge from the wall, gaining 3D depth
+      if (c.peel) {
+        c.peel.t += dt;
+        const k = Math.min(1, c.peel.t / c.peel.dur);
+        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        root.position = B.Vector3.Lerp(c.peel.from, c.peel.to, e);
+        root.position.y = heightAt(root.position.x, root.position.z);
+        root.scaling.z = 0.05 + 0.95 * e;
+        c.api.update(dt, true);
+        if (k >= 1) { root.scaling.set(1, 1, 1); c.peel = null; }
+        return;
+      }
       const back = camera.getDirection(B.Axis.Z).scale(-c.offset);
       const side = camera.getDirection(B.Axis.X).scale((i % 2 ? 1 : -1) * 1.0);
       const want = camera.position.add(back).add(side);

@@ -362,6 +362,28 @@
     return root;
   }
 
+  // ---------- low-poly reed boat (papyrus skiff) ----------
+  function boat(pos) {
+    const root = new B.TransformNode("boat3d", _scene);
+    root.position = pos.clone();
+    const reed = mat("#b0602f");
+    const reedDk = mat("#8a4a22");
+    // hull
+    const hull = box(3.2, 0.5, 1.1, reed, "hull"); flat(hull); hull.parent = root; hull.position.y = 0.25;
+    // upturned prow & stern (4-sided cones)
+    [-1, 1].forEach((s) => {
+      const end = cyl(1.3, 0.05, 0.9, 4, reedDk, "boatEnd");
+      end.parent = root; end.position.set(s * 1.75, 0.55, 0);
+      end.rotation.z = s * 1.1; end.rotation.y = Math.PI / 4;
+    });
+    // mast + sail
+    const mast = cyl(2.0, 0.06, 0.08, 6, mat("#6b4a25"), "mast"); mast.parent = root; mast.position.y = 1.2;
+    const sail = box(0.08, 1.2, 1.4, mat("#efe6cf"), "sail"); flat(sail); sail.parent = root;
+    sail.position.set(0, 1.4, 0);
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; });
+    return root;
+  }
+
   // ---------- a single low-poly candle (flame; light optional) ----------
   function candle(pos, h, withLight) {
     h = h || 0.5;
@@ -383,6 +405,6 @@
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
-    flashlight, candle,
+    flashlight, candle, boat,
   };
 })(window);
