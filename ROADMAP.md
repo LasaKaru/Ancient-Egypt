@@ -30,7 +30,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Hotbar / quick-use** (S) — number keys / radial for tools.
 - [ ] **Ability unlocks** (L) — e.g. dash, double-jump, "ink dash" that lets the 2D figure leap gaps.
 - [ ] **Skill tree / upgrades** (L) — spend collected scarabs on light range, strike power, climb speed.
-- [ ] **Health / stamina** (M) — player can take boss damage; stamina for climbing/dashing.
+- [x] **Health** — Vitality bar, enemy damage, out-of-combat regen, respawn at the gate. ✅
 - [ ] **Lives / checkpoints / respawn** (M) — shrines act as checkpoints.
 - [ ] **Collectibles & lore notes** (S–M) — hidden ankhs, papyri that expand the story.
 - [ ] **Photo mode** (M) — free camera + filters for screenshots.

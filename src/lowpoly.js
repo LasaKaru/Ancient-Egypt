@@ -424,6 +424,23 @@
     return root;
   }
 
+  // ---------- enemy: shade of the Duat (floating wraith) ----------
+  function shade() {
+    const root = new B.TransformNode("shade", _scene);
+    const dark = new B.StandardMaterial("shadeMat", _scene);
+    dark.diffuseColor = B.Color3.FromHexString("#181226");
+    dark.emissiveColor = B.Color3.FromHexString("#2a1a4a");
+    dark.specularColor = new B.Color3(0, 0, 0);
+    dark.alpha = 0.82; dark.maxSimultaneousLights = 8;
+    const body = cyl(1.7, 0.08, 0.95, 6, dark, "shadeBody"); body.parent = root; body.position.y = 0.95;
+    const head = lowSphere(0.72, 1, dark, "shadeHead"); head.parent = root; head.position.y = 1.65;
+    const eyeMat = mat("#ff5bd0", "#ff1ab0", 1.6);
+    [-0.16, 0.16].forEach((x) => { const e = box(0.12, 0.15, 0.08, eyeMat, "shadeEye"); e.parent = root; e.position.set(x, 1.68, 0.32); });
+    const col = box(1.0, 2.0, 1.0, undefined, "shadeCol");
+    col.parent = root; col.position.y = 1.0; col.visibility = 0; col.isPickable = true; col.metadata = { shade: true };
+    return { root, col, eyeMat };
+  }
+
   // ---------- pharaoh's treasure (golden sarcophagus) ----------
   function treasure(pos) {
     const root = new B.TransformNode("treasure", _scene);
@@ -477,6 +494,6 @@
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
-    flashlight, candle, boat, mountain, mesa, bird, scarab, treasure,
+    flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade,
   };
 })(window);

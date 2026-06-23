@@ -67,6 +67,13 @@ walk near one to collect it.
 Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
 (right side); a connected **gamepad** drives movement and look automatically.
 
+### Combat & survival
+**Shades of the Duat** — floating wraiths with glowing eyes — roam the world,
+wander, and chase when you get close, draining your **Vitality** on contact.
+Aim and **strike them with Ra's light** (Click / `Space` / ⚔ / gamepad A) to
+banish them (two hits each). Vitality slowly regenerates out of combat; if it
+hits zero you respawn at the gate.
+
 ## The mechanic
 
 1. Explore the temple in **first person**.

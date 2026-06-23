@@ -32,6 +32,7 @@
     inventory: $("inventory"), invScarabs: $("invScarabs"), invCompanions: $("invCompanions"),
     btnInvClose: $("btnInvClose"), scarabHud: $("scarabHud"), scarabCount: $("scarabCount"),
     victory: $("victory"), victoryStats: $("victoryStats"), btnVictoryMenu: $("btnVictoryMenu"),
+    healthHud: $("healthHud"), hpFill: $("hpFill"), damageFlash: $("damageFlash"),
     // settings inputs
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
@@ -103,6 +104,8 @@
     bossProps: [],
     boss: null,
     treasure: null,
+    enemies: [],
+    health: 100, maxHealth: 100, lastHit: 0,
     objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
 
@@ -648,6 +651,72 @@
       showVictory();
     }
   }
+  // ============================================================
+  // ENEMIES (Shades of the Duat) + HEALTH / COMBAT
+  // ============================================================
+  const ENEMY_SPOTS = [[3, 2], [-3, 4], [6, -3], [34, -10], [-15, 4]];
+  function clearEnemies() { state.enemies.forEach((e) => e.sh.root.dispose()); state.enemies = []; }
+  function spawnEnemies() {
+    clearEnemies();
+    ENEMY_SPOTS.forEach((s) => {
+      const sh = LP.shade();
+      sh.root.position.set(s[0], heightAt(s[0], s[1]), s[1]);
+      state.enemies.push({ sh, hp: 2, t: Math.random() * 6, cd: 0, heading: Math.random() * Math.PI * 2, wt: 0 });
+    });
+  }
+  function updateEnemies(dt) {
+    const ph = camera.position;
+    state.enemies.forEach((e) => {
+      const r = e.sh.root; e.t += dt; e.cd = Math.max(0, e.cd - dt);
+      r.position.y = heightAt(r.position.x, r.position.z) + 0.2 + Math.sin(e.t * 3) * 0.15;
+      const dx = ph.x - r.position.x, dz = ph.z - r.position.z, d = Math.hypot(dx, dz) || 1;
+      if (d < 13) {
+        const sp = 2.2 * dt; r.position.x += (dx / d) * sp; r.position.z += (dz / d) * sp;
+        r.rotation.y = Math.atan2(dx / d, dz / d);
+        if (d < 1.7 && e.cd <= 0) { damagePlayer(8); e.cd = 1.1; }
+      } else {
+        e.wt -= dt; if (e.wt <= 0) { e.heading += (Math.random() - 0.5) * 1.5; e.wt = 1 + Math.random() * 2; }
+        r.position.x += Math.sin(e.heading) * 0.6 * dt; r.position.z += Math.cos(e.heading) * 0.6 * dt;
+        r.rotation.y = e.heading;
+      }
+    });
+  }
+  function strikeShades() {
+    if (state.mode !== "3d") return false;
+    const pick = scene.pickWithRay(camera.getForwardRay(8), (m) => m.metadata && m.metadata.shade);
+    if (!pick.hit) return false;
+    const e = state.enemies.find((x) => x.sh.col === pick.pickedMesh);
+    if (!e) return false;
+    e.hp -= 1; Sound.hit(); e.sh.root.scaling.scaleInPlace(0.9);
+    e.sh.eyeMat.emissiveColor = new B.Color3(1, 1, 0.9);
+    if (e.hp <= 0) {
+      Sound.unwhoosh(); e.sh.root.dispose();
+      state.enemies = state.enemies.filter((x) => x !== e);
+      toast("A shade is banished by Ra's light!", 1400);
+    }
+    return true;
+  }
+  function updateHealthHud() { dom.hpFill.style.width = Math.max(0, state.health / state.maxHealth * 100) + "%"; }
+  function damagePlayer(n) {
+    if (!state.started || state.paused) return;
+    state.health -= n; state.lastHit = performance.now(); updateHealthHud();
+    Sound.hit();
+    dom.damageFlash.classList.add("show");
+    setTimeout(() => dom.damageFlash.classList.remove("show"), 180);
+    if (state.health <= 0) respawn();
+  }
+  function respawn() {
+    state.health = state.maxHealth; updateHealthHud();
+    camera.position = world.spawn.clone();
+    spawnEnemies();
+    toast("The shades overwhelmed you — restored at the gate.", 2600);
+  }
+  function regen(dt) {
+    if (state.health < state.maxHealth && performance.now() - state.lastHit > 4000) {
+      state.health = Math.min(state.maxHealth, state.health + 12 * dt); updateHealthHud();
+    }
+  }
+
   function showVictory() {
     Sound.success();
     const got = world.scarabs.filter((s) => s.collected).length;
@@ -718,14 +787,18 @@
     }
     if (!down) return;
     if (state.mode === "boss") { if (key === " " || key === "spacebar") hitBoss(); return; }
-    if (key === "e") { const m = lookedAtInteractive(); if (m) enter2DMode(m); }
+    if (key === "e") { const m = lookedAtInteractive(); if (m) enter2DMode(m); return; }
+    if (key === " " || key === "spacebar") strikeShades();
   });
 
   scene.onPointerObservable.add((pi) => {
     if (pi.type !== B.PointerEventTypes.POINTERDOWN) return;
     if (!state.started || state.paused) return;
     if (state.mode === "boss") { hitBoss(); return; }
-    if (state.mode === "3d" && document.pointerLockElement !== canvas) canvas.requestPointerLock();
+    if (state.mode === "3d") {
+      if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
+      else strikeShades();
+    }
   });
 
   // Esc = pause/back, I = inventory (handled at window level so it works unlocked)
@@ -763,7 +836,7 @@
     e.preventDefault();
     if (state.mode === "2d") exit2DMode();
     else if (state.mode === "boss") hitBoss();
-    else { const m = lookedAtInteractive(); if (m) enter2DMode(m); }
+    else { const m = lookedAtInteractive(); if (m) enter2DMode(m); else strikeShades(); }
   }, { passive: false });
   dom.tcPause.addEventListener("touchstart", (e) => { e.preventDefault(); pauseGame(); }, { passive: false });
 
@@ -839,7 +912,7 @@
     if (edge(0)) {
       if (state.mode === "2d") exit2DMode();
       else if (state.mode === "boss") hitBoss();
-      else if (!state.paused) { const m = lookedAtInteractive(); if (m) enter2DMode(m); }
+      else if (!state.paused) { const m = lookedAtInteractive(); if (m) enter2DMode(m); else strikeShades(); }
     }
     if (edge(1) && state.mode === "2d") exit2DMode();
     if (edge(9)) { if (currentOverlay === "pause") resumeGame(); else if (!currentOverlay && state.mode !== "2d") pauseGame(); }
@@ -866,9 +939,11 @@
     if (state.mode === "2d") { update2D(dt); return; }
 
     groundCamera();
+    regen(dt);
     checkScarabPickup();
     checkTreasurePickup();
     if (state.mode === "boss") { updateBoss(dt); return; }
+    updateEnemies(dt);
 
     // 3d: crosshair + contextual hint
     const m = lookedAtInteractive();
@@ -1041,6 +1116,8 @@
     flashlight.setEnabled(true); flashSpot.setEnabled(true);
     dom.crosshair.style.display = "block";
     if (saveData) applyLoad(saveData); else updateScarabHud();
+    state.health = state.maxHealth; updateHealthHud();
+    spawnEnemies();
     renderObjectives();
     showTouch(isTouch);
     setInstr(defaultInstr());
