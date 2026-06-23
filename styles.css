@@ -234,9 +234,28 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 .touch-btn:active { background: rgba(244, 217, 160, 0.25); }
-#tcLeft  { left: 20px;  bottom: 90px; }
-#tcRight { left: 100px; bottom: 90px; }
-#tcAction{ right: 24px; bottom: 100px; width: 84px; height: 84px; font-size: 16px; }
+#tcLeft  { left: 24px;  bottom: 96px; display: none; }
+#tcRight { left: 104px; bottom: 96px; display: none; }
+#tcAction{ right: 24px; bottom: 100px; width: 84px; height: 84px; font-size: 28px; }
+#tcPause { right: 40px; bottom: 200px; width: 52px; height: 52px; font-size: 20px; display: none; }
+
+/* movement joystick (3D mode) */
+#joystick {
+  position: absolute; left: 26px; bottom: 80px;
+  width: 124px; height: 124px; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(244, 217, 160, 0.3);
+  pointer-events: auto; display: none; touch-action: none;
+}
+#joyKnob {
+  position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px;
+  border-radius: 50%; background: rgba(244, 217, 160, 0.55);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+/* mode-driven visibility */
+#touchControls.mode3d #joystick { display: block; }
+#touchControls.mode3d #tcPause { display: flex; }
+#touchControls.mode2d #tcLeft,
+#touchControls.mode2d #tcRight { display: flex; }
 
 /* ---------- Toast (transient big message) ---------- */
 #toast {

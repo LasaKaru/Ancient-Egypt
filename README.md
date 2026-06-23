@@ -53,16 +53,19 @@ walk near one to collect it.
 
 ## Controls
 
-| Action | Desktop | Mobile |
-| --- | --- | --- |
-| Look | Mouse (click to lock) | Drag |
-| Move (3D) | `W A S D` / arrows | — |
-| Interact with a mural | `E` | ⚔ button |
-| Move painted figure (2D) | `←` `→` / `A` `D` | ◀ ▶ buttons |
-| Exit a painting | `E` | ✕ button |
-| Strike the guardian | Click / `Space` | ⚔ button |
-| Pause | `Esc` | — |
-| Inventory | `I` | — |
+| Action | Desktop | Mobile | Gamepad |
+| --- | --- | --- | --- |
+| Look | Mouse (click to lock) | Drag right side | Right stick |
+| Move (3D) | `W A S D` / arrows | Left joystick | Left stick |
+| Interact with a mural | `E` | ⚔ button | A |
+| Move painted figure (2D) | `←` `→` / `A` `D` | ◀ ▶ buttons | Left stick / A |
+| Exit a painting | `E` | ⚔ button | A / B |
+| Strike the guardian | Click / `Space` | ⚔ button | A |
+| Pause | `Esc` | ⏸ button | Start |
+| Inventory | `I` | — | — |
+
+Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
+(right side); a connected **gamepad** drives movement and look automatically.
 
 ## The mechanic
 

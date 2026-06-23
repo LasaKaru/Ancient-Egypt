@@ -22,6 +22,7 @@
     instructions: $("instructions"), objList: $("objList"), crosshair: $("crosshair"),
     toast: $("toast"), bossBar: $("bossBar"), bossFill: $("bossFill"),
     touch: $("touchControls"), tcLeft: $("tcLeft"), tcRight: $("tcRight"), tcAction: $("tcAction"),
+    tcPause: $("tcPause"), joystick: $("joystick"), joyKnob: $("joyKnob"),
     // screens
     splash: $("splash"), menu: $("menu"), settings: $("settings"), credits: $("credits"), pause: $("pause"),
     btnPlay: $("btnPlay"), btnSettings: $("btnSettings"), btnCredits: $("btnCredits"),
@@ -56,6 +57,7 @@
   camera.keysLeft = [65, 37];
   camera.keysRight = [68, 39];
   camera.setTarget(new B.Vector3(0, EYE, 0));
+  try { camera.inputs.addGamepad(); } catch (e) {} // move + look when a controller is connected
   camera.detachControl(); // gameplay camera stays inactive until PLAY
 
   // ---------- menu camera (slow cinematic orbit behind the menus) ----------
@@ -94,6 +96,7 @@
     patch: null,
     savedCam: null,
     move2D: { neg: false, pos: false },
+    touchMove: { x: 0, y: 0 },
     cam2D: null,
     companions: [],
     bossProps: [],
@@ -698,9 +701,14 @@
     }
   });
 
+  function updateTouchMode() {
+    dom.touch.classList.toggle("mode2d", state.mode === "2d");
+    dom.touch.classList.toggle("mode3d", state.mode !== "2d");
+  }
   function showTouch(show) {
     if (!isTouch) { dom.touch.classList.remove("show"); return; }
     dom.touch.classList.toggle("show", show);
+    updateTouchMode();
   }
   function bindHold(el, on, off) {
     el.addEventListener("touchstart", (e) => { e.preventDefault(); on(); }, { passive: false });
@@ -716,6 +724,85 @@
     else if (state.mode === "boss") hitBoss();
     else { const m = lookedAtInteractive(); if (m) enter2DMode(m); }
   }, { passive: false });
+  dom.tcPause.addEventListener("touchstart", (e) => { e.preventDefault(); pauseGame(); }, { passive: false });
+
+  // ----- mobile movement joystick (left) -----
+  if (isTouch) {
+    let joyId = null;
+    const R = 50;
+    const center = () => { const r = dom.joystick.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+    function joyMove(t) {
+      const c = center();
+      let dx = t.clientX - c.x, dy = t.clientY - c.y;
+      const len = Math.hypot(dx, dy) || 1;
+      if (len > R) { dx = dx / len * R; dy = dy / len * R; }
+      dom.joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      state.touchMove.x = dx / R; state.touchMove.y = dy / R;
+    }
+    function joyEnd() { joyId = null; state.touchMove.x = 0; state.touchMove.y = 0; dom.joyKnob.style.transform = ""; }
+    dom.joystick.addEventListener("touchstart", (e) => {
+      e.preventDefault(); const t = e.changedTouches[0]; joyId = t.identifier; joyMove(t);
+    }, { passive: false });
+    dom.joystick.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      for (const t of e.changedTouches) if (t.identifier === joyId) joyMove(t);
+    }, { passive: false });
+    dom.joystick.addEventListener("touchend", (e) => {
+      for (const t of e.changedTouches) if (t.identifier === joyId) joyEnd();
+    }, { passive: false });
+    dom.joystick.addEventListener("touchcancel", joyEnd, { passive: false });
+
+    // ----- drag anywhere on the right side of the screen to look -----
+    let lookId = null, lookX = 0, lookY = 0;
+    const LOOK = 0.005;
+    canvas.addEventListener("touchstart", (e) => {
+      for (const t of e.changedTouches) {
+        if (lookId === null && t.clientX > window.innerWidth * 0.4) {
+          lookId = t.identifier; lookX = t.clientX; lookY = t.clientY;
+        }
+      }
+    }, { passive: true });
+    canvas.addEventListener("touchmove", (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === lookId && state.started && !state.paused && state.mode !== "2d") {
+          camera.rotation.y += (t.clientX - lookX) * LOOK;
+          camera.rotation.x += (t.clientY - lookY) * LOOK;
+          camera.rotation.x = Math.max(-1.4, Math.min(1.4, camera.rotation.x));
+          lookX = t.clientX; lookY = t.clientY;
+        }
+      }
+    }, { passive: true });
+    const lookEnd = (e) => { for (const t of e.changedTouches) if (t.identifier === lookId) lookId = null; };
+    canvas.addEventListener("touchend", lookEnd, { passive: true });
+    canvas.addEventListener("touchcancel", lookEnd, { passive: true });
+  }
+
+  function applyTouchMove() {
+    const tm = state.touchMove;
+    if (tm.x === 0 && tm.y === 0) return;
+    const f = camera.getDirection(B.Axis.Z), r = camera.getDirection(B.Axis.X);
+    f.y = 0; r.y = 0; f.normalize(); r.normalize();
+    const mv = f.scale(-tm.y * camera.speed).add(r.scale(tm.x * camera.speed));
+    camera.cameraDirection.addInPlace(mv);
+  }
+
+  // ----- gamepad buttons (move/look handled by Babylon's gamepad input) -----
+  const padPrev = {};
+  function pollGamepadButtons() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = pads && pads[0];
+    if (!gp) return;
+    const pressed = (i) => gp.buttons[i] && gp.buttons[i].pressed;
+    const edge = (i) => { const p = pressed(i); const e = p && !padPrev[i]; padPrev[i] = p; return e; };
+    // A (0) = interact / strike / exit-2D ; B (1) = back/exit ; Start (9) = pause
+    if (edge(0)) {
+      if (state.mode === "2d") exit2DMode();
+      else if (state.mode === "boss") hitBoss();
+      else if (!state.paused) { const m = lookedAtInteractive(); if (m) enter2DMode(m); }
+    }
+    if (edge(1) && state.mode === "2d") exit2DMode();
+    if (edge(9)) { if (currentOverlay === "pause") resumeGame(); else if (!currentOverlay && state.mode !== "2d") pauseGame(); }
+  }
 
   // ============================================================
   // RENDER LOOP
@@ -729,7 +816,9 @@
     const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
     scene.render();
     if (!state.started) { menuCam.alpha += dt * 0.06; return; } // cinematic menu orbit
+    pollGamepadButtons();
     if (state.paused) return;
+    if (state.mode !== "2d") applyTouchMove();
     updateTweens(dt);
     updateCompanions(dt);
 
