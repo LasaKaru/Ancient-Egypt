@@ -27,6 +27,9 @@
   <!-- Scarab collectible counter -->
   <div id="scarabHud"><span class="ico">🪲</span> <span id="scarabCount">0 / 5</span></div>
 
+  <!-- Minimap (click / tap to open the full map) -->
+  <canvas id="minimap" width="160" height="160" title="Open map (M)"></canvas>
+
   <!-- Player health -->
   <div id="healthHud">
     <div class="hp-label">VITALITY</div>
@@ -49,6 +52,7 @@
     <div class="touch-btn" id="tcRight">▶</div>
     <div class="touch-btn" id="tcAction">⚔</div>
     <div class="touch-btn" id="tcPause">⏸</div>
+    <div class="touch-btn" id="tcMap">🗺</div>
   </div>
 
   <!-- ===== Studio splash ===== -->
@@ -157,6 +161,22 @@
       <div class="menu-buttons">
         <button class="mbtn" id="btnVictoryMenu">MAIN MENU</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== Full map ===== -->
+  <div id="map" class="screen hidden">
+    <div class="panel-box map-box">
+      <h2>City of the Fresco — Map</h2>
+      <canvas id="mapCanvas" width="520" height="520"></canvas>
+      <div class="map-legend">
+        <span><i class="lg lg-you"></i> You</span>
+        <span><i class="lg lg-tr"></i> Treasure</span>
+        <span><i class="lg lg-sc"></i> Secret scarab</span>
+        <span><i class="lg lg-bd"></i> Building</span>
+        <span><i class="lg lg-oa"></i> Oasis</span>
+      </div>
+      <div class="panel-actions"><button class="mbtn" id="btnMapClose">CLOSE</button></div>
     </div>
   </div>
 

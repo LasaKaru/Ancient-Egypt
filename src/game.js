@@ -33,6 +33,7 @@
     btnInvClose: $("btnInvClose"), scarabHud: $("scarabHud"), scarabCount: $("scarabCount"),
     victory: $("victory"), victoryStats: $("victoryStats"), btnVictoryMenu: $("btnVictoryMenu"),
     healthHud: $("healthHud"), hpFill: $("hpFill"), damageFlash: $("damageFlash"),
+    minimap: $("minimap"), map: $("map"), mapCanvas: $("mapCanvas"), btnMapClose: $("btnMapClose"), tcMap: $("tcMap"),
     // settings inputs
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
@@ -717,6 +718,72 @@
     }
   }
 
+  // ============================================================
+  // MAP + MINIMAP
+  // ============================================================
+  const miniCtx = dom.minimap.getContext("2d");
+  function drawWorldMap(ctx, size, range, cx, cz, showScarabs) {
+    const sc = size / (2 * range);
+    const px = (x) => size / 2 + (x - cx) * sc;
+    const py = (z) => size / 2 + (z - cz) * sc;
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = "#d8bd86"; ctx.fillRect(0, 0, size, size);
+    // oasis
+    ctx.fillStyle = "#2c7da0"; ctx.beginPath();
+    ctx.arc(px(world.oasis.x), py(world.oasis.z), world.oasis.r * sc, 0, Math.PI * 2); ctx.fill();
+    // buildings
+    ctx.fillStyle = "#9a7d4f";
+    world.cityBuildings.forEach((b) => ctx.fillRect(px(b.x - b.w / 2), py(b.z - b.d / 2), b.w * sc, b.d * sc));
+    // temple
+    ctx.fillStyle = "#b89a5e"; ctx.strokeStyle = "#5a3010"; ctx.lineWidth = 2;
+    ctx.fillRect(px(-9), py(-11), 18 * sc, 22 * sc);
+    ctx.strokeRect(px(-9), py(-11), 18 * sc, 22 * sc);
+    // secret scarabs (uncollected)
+    if (showScarabs) {
+      world.scarabs.forEach((s) => {
+        if (s.collected) return;
+        ctx.fillStyle = "#43c06a";
+        ctx.beginPath(); ctx.arc(px(s.root.position.x), py(s.root.position.z), 5, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+    // treasure
+    if (state.treasure) {
+      const tx = px(state.treasure.root.position.x), ty = py(state.treasure.root.position.z);
+      ctx.fillStyle = "#ffd24a"; star(ctx, tx, ty, 8, 4, 5);
+    }
+    // player arrow
+    const plx = px(camera.position.x), ply = py(camera.position.z);
+    const hx = Math.sin(camera.rotation.y), hz = Math.cos(camera.rotation.y);
+    const ppx = -hz, ppz = hx;
+    ctx.fillStyle = "#e74c3c";
+    ctx.beginPath();
+    ctx.moveTo(plx + hx * 9, ply + hz * 9);
+    ctx.lineTo(plx - hx * 5 + ppx * 5, ply - hz * 5 + ppz * 5);
+    ctx.lineTo(plx - hx * 5 - ppx * 5, ply - hz * 5 - ppz * 5);
+    ctx.closePath(); ctx.fill();
+  }
+  function star(ctx, x, y, rO, rI, n) {
+    ctx.beginPath();
+    for (let i = 0; i < n * 2; i++) {
+      const r = i % 2 ? rI : rO, a = (i / (n * 2)) * Math.PI * 2 - Math.PI / 2;
+      ctx[i ? "lineTo" : "moveTo"](x + Math.cos(a) * r, y + Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  function updateMinimap() {
+    drawWorldMap(miniCtx, 160, 56, camera.position.x, camera.position.z, false);
+  }
+  function openMap() {
+    const c = dom.mapCanvas;
+    drawWorldMap(c.getContext("2d"), c.width, 95, 0, 0, true);
+    openOverlay("map");
+  }
+  function toggleMap() {
+    if (!state.started || state.mode === "2d") return;
+    if (currentOverlay === "map") closeOverlay();
+    else if (!currentOverlay) openMap();
+  }
+
   function showVictory() {
     Sound.success();
     const got = world.scarabs.filter((s) => s.collected).length;
@@ -806,10 +873,11 @@
     if (!state.started) return;
     const k = e.key.toLowerCase();
     if (k === "i" && state.mode !== "2d") { toggleInventory(); return; }
+    if (k === "m" && state.mode !== "2d") { toggleMap(); return; }
     if (e.key === "Escape") {
       if (state.mode === "2d") return;
       if (!dom.settings.classList.contains("hidden")) { showScreen(settingsReturn === "pause" ? "pause" : "menu"); return; }
-      if (currentOverlay === "inventory") closeOverlay();
+      if (currentOverlay === "inventory" || currentOverlay === "map") closeOverlay();
       else if (currentOverlay === "pause") resumeGame();
       else pauseGame();
     }
@@ -940,6 +1008,7 @@
 
     groundCamera();
     regen(dt);
+    updateMinimap();
     checkScarabPickup();
     checkTreasurePickup();
     if (state.mode === "boss") { updateBoss(dt); return; }
@@ -1083,7 +1152,7 @@
   // ============================================================
   // SCREEN / MENU FLOW
   // ============================================================
-  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory"];
+  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map"];
   function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
   let settingsReturn = "menu";
   let currentOverlay = null; // "pause" | "inventory" | null (in-game overlays)
@@ -1159,6 +1228,9 @@
   dom.btnMainMenu.addEventListener("click", () => { saveGame(); sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
   dom.btnInvClose.addEventListener("click", closeOverlay);
   dom.btnVictoryMenu.addEventListener("click", () => { sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
+  dom.btnMapClose.addEventListener("click", closeOverlay);
+  dom.minimap.addEventListener("click", toggleMap);
+  dom.tcMap.addEventListener("touchstart", (e) => { e.preventDefault(); toggleMap(); }, { passive: false });
 
   // first user gesture anywhere enables audio (autoplay policy)
   window.addEventListener("pointerdown", () => Sound.init(), { once: true });

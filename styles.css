@@ -238,6 +238,8 @@ html, body {
 #tcRight { left: 104px; bottom: 96px; display: none; }
 #tcAction{ right: 24px; bottom: 100px; width: 84px; height: 84px; font-size: 28px; }
 #tcPause { right: 40px; bottom: 200px; width: 52px; height: 52px; font-size: 20px; display: none; }
+#tcMap { right: 104px; bottom: 200px; width: 52px; height: 52px; font-size: 20px; display: none; }
+#touchControls.mode3d #tcMap { display: flex; }
 
 /* movement joystick (3D mode) */
 #joystick {
@@ -436,6 +438,36 @@ body.playing #instructions { display: block; }
 .victory-sub { margin: 14px 0 18px; font-size: clamp(14px, 3vw, 20px); letter-spacing: 2px; opacity: 0.9; line-height: 1.6; }
 .victory-sub b { color: var(--gold-bright); }
 .victory-stats { margin: 0 auto 26px; font-size: 15px; opacity: 0.85; line-height: 1.8; }
+
+/* ---------- Minimap ---------- */
+#minimap {
+  position: absolute; top: 58px; right: 16px; z-index: 10;
+  width: 150px; height: 150px; border-radius: 50%;
+  border: 2px solid rgba(244, 217, 160, 0.5); background: rgba(0, 0, 0, 0.4);
+  display: none; cursor: pointer; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+}
+body.playing #minimap { display: block; }
+
+/* ---------- Full map ---------- */
+#map { z-index: 40; background: rgba(8, 5, 2, 0.9); backdrop-filter: blur(3px); }
+.map-box { width: auto; max-width: 94vw; }
+#mapCanvas {
+  display: block; margin: 0 auto; border-radius: 10px;
+  border: 1px solid rgba(244, 217, 160, 0.4);
+  width: min(78vmin, 520px); height: min(78vmin, 520px);
+  background: #d8bd86;
+}
+.map-legend {
+  display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+  margin: 14px 0 4px; font-size: 13px; opacity: 0.9;
+}
+.map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.map-legend .lg { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+.lg-you { background: #e74c3c; border-radius: 50%; }
+.lg-tr { background: #ffd24a; }
+.lg-sc { background: #43c06a; border-radius: 50%; }
+.lg-bd { background: #9a7d4f; }
+.lg-oa { background: #2c7da0; border-radius: 50%; }
 
 /* ---------- Health HUD ---------- */
 #healthHud {

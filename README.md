@@ -12,9 +12,13 @@ bigger world built from several connected zones:
   path across rolling dunes.
 - **The Temple** — an open-air pillared hall holding the interactive murals,
   puzzles and the boss arena.
-- **The Oasis** — a low-poly lake with palms, reeds and grass (unlocked by the
-  Nile puzzle).
-- **Pyramid Horizon** — pyramids and scattered cacti/rocks across the dunes.
+- **The Ancient City** — a west district of mud-brick homes, a market square
+  with stalls, a great house and a roadside shrine, where secrets are hidden.
+- **The Oasis** — a low-poly lake with palms, reeds and grass.
+- **Pyramid Horizon & Mountains** — pyramids, mesas and a mountain range.
+
+A **minimap** (top-right, click to enlarge) and a full **map** (`M`) show your
+location, the treasure, the secret scarabs, buildings and the oasis.
 
 Everything (terrain, props, characters, the guardian) is generated from
 primitives + flat shading at runtime, so the world stays stylistically unified
@@ -63,6 +67,7 @@ walk near one to collect it.
 | Strike the guardian | Click / `Space` | ⚔ button | A |
 | Pause | `Esc` | ⏸ button | Start |
 | Inventory | `I` | — | — |
+| Map | `M` (or click minimap) | 🗺 button | — |
 
 Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
 (right side); a connected **gamepad** drives movement and look automatically.

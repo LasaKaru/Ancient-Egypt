@@ -424,6 +424,30 @@
     return root;
   }
 
+  // ---------- low-poly city buildings ----------
+  function house(pos, w, d, h) {
+    const root = new B.TransformNode("house", _scene);
+    root.position = pos.clone();
+    const tone = ["#b9925a", "#c2a067", "#a9824a", "#bd9a5e"][Math.floor(hash(pos.x, pos.z) * 4)];
+    const mud = mat(tone), mudDk = mat("#7a5a32"), roof = mat("#8a6a3a");
+    const body = box(w, h, d, mud, "houseBody"); flat(body); body.parent = root; body.position.y = h / 2; body.checkCollisions = true;
+    const lip = box(w + 0.3, 0.3, d + 0.3, roof, "roofLip"); flat(lip); lip.parent = root; lip.position.y = h;
+    const door = box(0.9, h * 0.5, 0.12, mudDk, "houseDoor"); flat(door); door.parent = root; door.position.set((hash(pos.z, 1) - 0.5) * w * 0.4, h * 0.25, d / 2 + 0.02);
+    const win = box(0.55, 0.55, 0.12, mat("#2a2014"), "houseWin"); flat(win); win.parent = root; win.position.set(w * 0.28, h * 0.62, d / 2 + 0.02);
+    // a few rooftop crates sometimes
+    if (hash(pos.x, 7) > 0.6) { const c = box(0.7, 0.7, 0.7, mudDk, "crate"); flat(c); c.parent = root; c.position.set(w * 0.2, h + 0.5, -d * 0.2); }
+    return root;
+  }
+  function stall(pos) {
+    const root = new B.TransformNode("stall", _scene); root.position = pos.clone();
+    const wood = mat("#7a5a32");
+    const cloth = mat(["#bb3b22", "#2f8f7e", "#2f6f8f", "#d4a017"][Math.floor(hash(pos.x, pos.z) * 4)]);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach((c) => { const p = cyl(2, 0.08, 0.1, 5, wood, "stallPost"); p.parent = root; p.position.set(c[0] * 0.95, 1, c[1] * 0.95); });
+    const canopy = box(2.6, 0.12, 2.6, cloth, "canopy"); flat(canopy); canopy.parent = root; canopy.position.y = 2.05; canopy.rotation.x = 0.06;
+    const table = box(2.2, 0.12, 1.0, wood, "stallTable"); flat(table); table.parent = root; table.position.set(0, 0.9, 0.6);
+    return root;
+  }
+
   // ---------- enemy: shade of the Duat (floating wraith) ----------
   function shade() {
     const root = new B.TransformNode("shade", _scene);
@@ -494,6 +518,6 @@
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
-    flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade,
+    flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall,
   };
 })(window);

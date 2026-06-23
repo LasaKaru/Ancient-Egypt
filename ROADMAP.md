@@ -84,7 +84,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 ## 8. UI / UX & menus
 - [ ] **Main menu & pause menu** (S–M) — start, continue, options, quit.
 - [ ] **Settings menu** (M) — graphics quality, sensitivity, volume, language, key rebinding.
-- [ ] **World/level map & minimap** (M) — fast travel between discovered shrines.
+- [x] **World map & minimap** — live minimap + full map (M) showing player, treasure, secrets, buildings, oasis. ✅ (fast travel TBD)
 - [ ] **In-world markers/waypoints** (S).
 - [ ] **Tutorial / onboarding** (M) — contextual hints, a guided first room.
 - [ ] **Better HUD** (S) — health, stamina, equipped tool, objective tracker.

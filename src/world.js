@@ -43,6 +43,11 @@
       h = h * smoothstep(4, 9, dPath); // flatten toward 0 near the path
       // oasis basin (east) sits slightly below ground for water
       h = flattenDisc(h, x, z, 38, -8, 16, -1.3);
+      // ancient city district (west) — flattened ground for the streets
+      h = flattenDisc(h, x, z, -34, -6, 24, 0);
+      // road from the plaza out to the city
+      const dRoad = segDist(x, z, -8, -22, -28, -8);
+      h = h * smoothstep(3, 8, dRoad);
       return h;
     };
   }
@@ -275,9 +280,47 @@
       boat3D.position.y = -0.35 + Math.sin(performance.now() * 0.001) * 0.06; // gentle bob
     });
 
+    // ============================================================
+    // ANCIENT CITY (west district) — a grid of homes, market & shrine
+    // ============================================================
+    const cityBuildings = [];
+    const CX = -34, CZ = -6;
+    function addHouse(x, z, w, d, h) {
+      LP.house(new B.Vector3(x, heightAt(x, z), z), w, d, h);
+      cityBuildings.push({ x, z, w, d });
+    }
+    for (let gx = -2; gx <= 2; gx++) {
+      for (let gz = -2; gz <= 2; gz++) {
+        if (Math.abs(gx) <= 0 && Math.abs(gz) <= 0) continue; // central market square
+        if (LP.hash(gx + 5, gz + 5) < 0.28) continue;          // gaps = streets/courtyards
+        const x = CX + gx * 7 + (LP.hash(gx, gz) - 0.5) * 1.6;
+        const z = CZ + gz * 7 + (LP.hash(gz, gx) - 0.5) * 1.6;
+        addHouse(x, z, 3.6 + LP.hash(gx, 1) * 2, 3.6 + LP.hash(gz, 2) * 2, 3 + LP.hash(gx, gz) * 2.6);
+      }
+    }
+    // market stalls in the central square
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      LP.stall(new B.Vector3(CX + Math.cos(a) * 3.4, heightAt(CX, CZ), CZ + Math.sin(a) * 3.4));
+    }
+    // a "great house" / granary on the city edge
+    addHouse(CX - 13, CZ + 2, 7, 6, 6);
+    addHouse(CX + 2, CZ - 13, 6, 6, 5);
+    // small roadside shrine with two columns
+    [-1, 1].forEach((s) => { const c = LP.cyl(3.2, 0.5, 0.6, 8, sandstone, "shrineCol"); c.position.set(-18 + s * 1.6, 1.6, -14); c.checkCollisions = true; });
+    const shrineRoof = LP.box(5, 0.5, 2.4, sandstoneDk, "shrineRoof"); LP.flat(shrineRoof); shrineRoof.position.set(-18, 3.3, -14);
+
     // ---- collectible scarabs (hidden around the world) ----
     const scarabs = [];
-    [[-7, 9, 1.2], [7, -9, 1.2], [0, -30, 1.0], [30, -2, 1.3], [-13, -2, 1.4]].forEach((s, i) => {
+    [
+      [-7, 9, 1.2],      // temple back-left corner
+      [0, -30, 1.0],     // entrance plaza
+      [30, -2, 1.3],     // oasis edge
+      [-34, -6, 1.2],    // city market square
+      [-47, 0, 1.2],     // far city edge (behind the great house)
+      [-21, -16, 1.2],   // by the roadside shrine
+      [-28, 6, 1.2],     // tucked between city homes
+    ].forEach((s, i) => {
       const x = s[0], z = s[1], y = heightAt(x, z) + s[2];
       const root = LP.scarab(new B.Vector3(x, y, z));
       scarabs.push({ root, id: i, collected: false, baseY: y });
@@ -299,7 +342,8 @@
     const spawn = new B.Vector3(0, 1.7, -34);
 
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
-             boat3D, boatDock, boatFar, dust, godRays, scarabs, center: B.Vector3.Zero() };
+             boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings,
+             oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };
   }
 
   global.World = { build };
