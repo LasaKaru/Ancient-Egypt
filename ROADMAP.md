@@ -63,7 +63,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 ## 5. Characters, companions & NPCs
 - [ ] **Companion abilities** (M) — allies that fight, carry, boost, or activate switches.
 - [ ] **Companion commands** (M) — point them somewhere, hold position.
-- [ ] **NPCs with dialogue** (M) — villagers, priests, a quest-giver; branching dialogue UI.
+- [x] **NPCs with dialogue** — merchant, priest, child in the city; proximity-talk dialogue UI. ✅ (branching TBD)
 - [ ] **Enemies / patrols** (L) — scarab swarms, mummies, temple guards with simple AI (patrol/chase/attack).
 - [ ] **Animation upgrades** (M–L) — skeletal-rigged characters or richer procedural animation than the current limb-swing.
 
@@ -175,7 +175,7 @@ gamepad + full mobile 3D controls, health/checkpoints, hint system.
 multiple 2D characters + collision, enemies with AI, a second boss, quest log.
 
 **Phase C — world (L):** 2–3 new zones (mountains/canyon, crypt, Duat), better
-water, day/night + weather, level/world structure + map & fast travel.
+water, day/night + weather, level/world structure. (map & fast travel ✅)
 
 **Phase D — fidelity (L):** shadows + post-processing, PBR/optional realistic
 asset pack, recorded audio + adaptive music, LOD/instancing performance pass.

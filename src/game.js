@@ -34,6 +34,7 @@
     victory: $("victory"), victoryStats: $("victoryStats"), btnVictoryMenu: $("btnVictoryMenu"),
     healthHud: $("healthHud"), hpFill: $("hpFill"), damageFlash: $("damageFlash"),
     minimap: $("minimap"), map: $("map"), mapCanvas: $("mapCanvas"), btnMapClose: $("btnMapClose"), tcMap: $("tcMap"),
+    fastTravel: $("fastTravel"), dialogue: $("dialogue"), dlgName: $("dlgName"), dlgText: $("dlgText"),
     // settings inputs
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
@@ -106,6 +107,8 @@
     boss: null,
     treasure: null,
     enemies: [],
+    npcs: [],
+    dialogue: null,
     health: 100, maxHealth: 100, lastHit: 0,
     objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
@@ -719,8 +722,83 @@
   }
 
   // ============================================================
+  // NPCs + DIALOGUE
+  // ============================================================
+  const NPC_DEFS = [
+    { name: "Merchant Khufu", x: -34, z: -3, colors: { cloth: "#2f6f8f", skin: "#c8854f" },
+      lines: [
+        "Greetings, wanderer! Welcome to our humble city.",
+        "Trade is slow with shades prowling the streets after dusk.",
+        "Strike them with your light and they'll trouble us no more.",
+      ] },
+    { name: "High Priest Senu", x: -2, z: -7, colors: { cloth: "#efe6cf", skin: "#c8854f", hair: "#2c1d0f" },
+      lines: [
+        "The frescoes remember what stone forgets.",
+        "Open the Nile's door, restore Ra's light, then face the Guardian.",
+        "Only then shall the Pharaoh's treasure reveal itself.",
+      ] },
+    { name: "Street Child Ipy", x: -28, z: 1, colors: { cloth: "#bb3b22", skin: "#d99b63" },
+      lines: [
+        "Pssst! Looking for the sacred scarabs?",
+        "I've seen them glinting on rooftops and by the old shrine…",
+        "Open your map with M — they shine green if you know where to look!",
+      ] },
+  ];
+  function spawnNPCs() {
+    state.npcs.forEach((n) => n.api.root.dispose()); state.npcs = [];
+    NPC_DEFS.forEach((d) => {
+      const api = LP.humanoid(d.colors);
+      api.root.position.set(d.x, heightAt(d.x, d.z), d.z);
+      api.root.rotation.y = Math.atan2(0 - d.x, 0 - d.z); // face the city/temple centre
+      state.npcs.push({ api, def: d, t: Math.random() * 6 });
+    });
+  }
+  function updateNPCs(dt) {
+    state.npcs.forEach((n) => { n.t += dt; n.api.root.position.y = heightAt(n.api.root.position.x, n.api.root.position.z) + Math.sin(n.t * 1.5) * 0.03; n.api.update(dt, false); });
+  }
+  function nearestNPC() {
+    let best = null, bd = 3.2 * 3.2;
+    state.npcs.forEach((n) => {
+      const dx = camera.position.x - n.api.root.position.x, dz = camera.position.z - n.api.root.position.z;
+      const d = dx * dx + dz * dz;
+      if (d < bd) { bd = d; best = n; }
+    });
+    return best;
+  }
+  function openDialogue(n) {
+    state.dialogue = { n, i: 0 };
+    camera.detachControl(); // freeze the player while talking
+    dom.dlgName.textContent = n.def.name;
+    dom.dlgText.textContent = n.def.lines[0];
+    dom.dialogue.classList.remove("hidden");
+    document.exitPointerLock && document.exitPointerLock();
+  }
+  function advanceDialogue() {
+    const d = state.dialogue; if (!d) return;
+    d.i++;
+    if (d.i >= d.n.def.lines.length) { closeDialogue(); return; }
+    dom.dlgText.textContent = d.n.def.lines[d.i];
+  }
+  function closeDialogue() {
+    if (!state.dialogue) return;
+    state.dialogue = null;
+    dom.dialogue.classList.add("hidden");
+    camera.attachControl(canvas, true);
+    if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
+  }
+  // clicking/tapping the dialogue box itself advances (box is a DOM element over the canvas)
+  dom.dialogue.addEventListener("click", advanceDialogue);
+  dom.dialogue.addEventListener("touchstart", (e) => { e.preventDefault(); advanceDialogue(); }, { passive: false });
+
+  // ============================================================
   // MAP + MINIMAP
   // ============================================================
+  const LOCATIONS = [
+    { name: "Temple Gate", x: 0, z: -30 },
+    { name: "Temple Hall", x: 0, z: 0 },
+    { name: "Ancient City", x: -34, z: -6 },
+    { name: "Oasis", x: 34, z: -6 },
+  ];
   const miniCtx = dom.minimap.getContext("2d");
   function drawWorldMap(ctx, size, range, cx, cz, showScarabs) {
     const sc = size / (2 * range);
@@ -744,6 +822,16 @@
         if (s.collected) return;
         ctx.fillStyle = "#43c06a";
         ctx.beginPath(); ctx.arc(px(s.root.position.x), py(s.root.position.z), 5, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+    // named locations (full map only)
+    if (showScarabs) {
+      ctx.font = "12px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
+      LOCATIONS.forEach((l) => {
+        const lx = px(l.x), ly = py(l.z);
+        ctx.fillStyle = "#caa05a";
+        ctx.save(); ctx.translate(lx, ly); ctx.rotate(Math.PI / 4); ctx.fillRect(-3, -3, 6, 6); ctx.restore();
+        ctx.fillStyle = "rgba(40,25,12,0.85)"; ctx.fillText(l.name, lx, ly - 8);
       });
     }
     // treasure
@@ -773,9 +861,24 @@
   function updateMinimap() {
     drawWorldMap(miniCtx, 160, 56, camera.position.x, camera.position.z, false);
   }
+  function buildFastTravel() {
+    dom.fastTravel.innerHTML = "";
+    LOCATIONS.forEach((loc) => {
+      const btn = document.createElement("button");
+      btn.className = "ft-btn"; btn.textContent = loc.name;
+      btn.addEventListener("click", () => fastTravelTo(loc));
+      dom.fastTravel.appendChild(btn);
+    });
+  }
+  function fastTravelTo(loc) {
+    camera.position = new B.Vector3(loc.x, heightAt(loc.x, loc.z) + EYE, loc.z);
+    closeOverlay();
+    toast("Traveled to " + loc.name, 2000);
+  }
   function openMap() {
     const c = dom.mapCanvas;
     drawWorldMap(c.getContext("2d"), c.width, 95, 0, 0, true);
+    buildFastTravel();
     openOverlay("map");
   }
   function toggleMap() {
@@ -846,6 +949,7 @@
     if (!state.started || state.paused) return;
     const down = kb.type === B.KeyboardEventTypes.KEYDOWN;
     const key = kb.event.key.toLowerCase();
+    if (state.dialogue) { if (down && (key === "e" || key === " " || key === "spacebar" || key === "enter")) advanceDialogue(); return; }
     if (state.mode === "2d") {
       if (key === "arrowleft" || key === "a" || key === "arrowdown" || key === "s") state.move2D.neg = down;
       if (key === "arrowright" || key === "d" || key === "arrowup" || key === "w") state.move2D.pos = down;
@@ -854,13 +958,19 @@
     }
     if (!down) return;
     if (state.mode === "boss") { if (key === " " || key === "spacebar") hitBoss(); return; }
-    if (key === "e") { const m = lookedAtInteractive(); if (m) enter2DMode(m); return; }
+    if (key === "e") {
+      const m = lookedAtInteractive();
+      if (m) enter2DMode(m);
+      else { const npc = nearestNPC(); if (npc) openDialogue(npc); }
+      return;
+    }
     if (key === " " || key === "spacebar") strikeShades();
   });
 
   scene.onPointerObservable.add((pi) => {
     if (pi.type !== B.PointerEventTypes.POINTERDOWN) return;
     if (!state.started || state.paused) return;
+    if (state.dialogue) { advanceDialogue(); return; }
     if (state.mode === "boss") { hitBoss(); return; }
     if (state.mode === "3d") {
       if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
@@ -872,6 +982,7 @@
   window.addEventListener("keydown", (e) => {
     if (!state.started) return;
     const k = e.key.toLowerCase();
+    if (state.dialogue) { if (e.key === "Escape") closeDialogue(); return; }
     if (k === "i" && state.mode !== "2d") { toggleInventory(); return; }
     if (k === "m" && state.mode !== "2d") { toggleMap(); return; }
     if (e.key === "Escape") {
@@ -1000,6 +1111,7 @@
     if (!state.started) { menuCam.alpha += dt * 0.06; return; } // cinematic menu orbit
     pollGamepadButtons();
     if (state.paused) return;
+    if (state.dialogue) { updateMinimap(); return; } // frozen while talking
     if (state.mode !== "2d") applyTouchMove();
     updateTweens(dt);
     updateCompanions(dt);
@@ -1013,6 +1125,7 @@
     checkTreasurePickup();
     if (state.mode === "boss") { updateBoss(dt); return; }
     updateEnemies(dt);
+    updateNPCs(dt);
 
     // 3d: crosshair + contextual hint
     const m = lookedAtInteractive();
@@ -1023,8 +1136,9 @@
         setInstr("The guardian sleeps. Restore the light and open the door first.");
       else setInstr((isTouch ? "Tap ⚔" : "Press E") + " to enter “" + def.title + "”");
     } else {
-      dom.crosshair.classList.remove("active");
-      setInstr(defaultInstr());
+      const npc = nearestNPC();
+      if (npc) { dom.crosshair.classList.add("active"); setInstr((isTouch ? "Tap ⚔" : "Press E") + " to talk to " + npc.def.name); }
+      else { dom.crosshair.classList.remove("active"); setInstr(defaultInstr()); }
     }
   });
 
@@ -1187,6 +1301,7 @@
     if (saveData) applyLoad(saveData); else updateScarabHud();
     state.health = state.maxHealth; updateHealthHud();
     spawnEnemies();
+    spawnNPCs();
     renderObjectives();
     showTouch(isTouch);
     setInstr(defaultInstr());

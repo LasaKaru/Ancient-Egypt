@@ -439,6 +439,36 @@ body.playing #instructions { display: block; }
 .victory-sub b { color: var(--gold-bright); }
 .victory-stats { margin: 0 auto 26px; font-size: 15px; opacity: 0.85; line-height: 1.8; }
 
+/* ---------- Dialogue ---------- */
+#dialogue {
+  position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
+  width: min(680px, 92vw); z-index: 13;
+  background: var(--panel); border: 1px solid rgba(244, 217, 160, 0.45);
+  border-radius: 12px; padding: 14px 22px 12px; cursor: pointer;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6);
+}
+#dialogue.hidden { display: none; }
+#dialogue .dlg-name {
+  font-size: 15px; letter-spacing: 2px; color: var(--gold-bright); font-weight: bold; margin-bottom: 6px;
+}
+#dialogue .dlg-text { font-size: 16px; line-height: 1.5; color: #f4e9cf; min-height: 44px; }
+#dialogue .dlg-hint { margin-top: 8px; font-size: 12px; opacity: 0.6; text-align: right; }
+
+/* ---------- Fast travel ---------- */
+.ft-label {
+  margin: 14px 0 6px; font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold-bright); opacity: 0.85; text-align: center;
+}
+.map-fast { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ft-btn {
+  pointer-events: auto; cursor: pointer;
+  background: rgba(244, 217, 160, 0.12); color: var(--gold);
+  border: 1px solid rgba(244, 217, 160, 0.5); border-radius: 8px;
+  padding: 7px 14px; font-size: 13px; letter-spacing: 1px;
+  transition: background 0.14s ease, transform 0.14s ease;
+}
+.ft-btn:hover { background: rgba(244, 217, 160, 0.25); transform: translateY(-1px); }
+
 /* ---------- Minimap ---------- */
 #minimap {
   position: absolute; top: 58px; right: 16px; z-index: 10;

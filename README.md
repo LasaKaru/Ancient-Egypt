@@ -18,7 +18,12 @@ bigger world built from several connected zones:
 - **Pyramid Horizon & Mountains** — pyramids, mesas and a mountain range.
 
 A **minimap** (top-right, click to enlarge) and a full **map** (`M`) show your
-location, the treasure, the secret scarabs, buildings and the oasis.
+location, the treasure, the secret scarabs, buildings and the oasis, with
+**fast‑travel** buttons to the Temple Gate, Temple Hall, Ancient City and Oasis.
+
+**Citizens** live in the city — a merchant, a high priest and a street child.
+Walk up and press **E** to talk; they share lore and hints (the priest tells
+you the path; the child points you to the secret scarabs).
 
 Everything (terrain, props, characters, the guardian) is generated from
 primitives + flat shading at runtime, so the world stays stylistically unified
