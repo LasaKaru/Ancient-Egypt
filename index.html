@@ -122,6 +122,10 @@
         <label for="setFog">Atmospheric Fog</label>
         <div class="control"><input type="checkbox" id="setFog"></div>
       </div>
+      <div class="setting-row">
+        <label for="setMusic">Background Music</label>
+        <div class="control"><input type="checkbox" id="setMusic"></div>
+      </div>
       <div class="panel-actions">
         <button class="mbtn" id="btnSettingsBack">BACK</button>
       </div>
@@ -186,6 +190,18 @@
       <div class="ft-label">Fast travel</div>
       <div class="map-fast" id="fastTravel"></div>
       <div class="panel-actions"><button class="mbtn" id="btnMapClose">CLOSE</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Quest log ===== -->
+  <div id="quests" class="screen hidden">
+    <div class="panel-box">
+      <h2>Quest Log</h2>
+      <div class="inv-section">Main Story</div>
+      <ul id="questMain" class="quest-list"></ul>
+      <div class="inv-section">Side Quests</div>
+      <ul id="questSide" class="quest-list"></ul>
+      <div class="panel-actions"><button class="mbtn" id="btnQuestsClose">CLOSE</button></div>
     </div>
   </div>
 

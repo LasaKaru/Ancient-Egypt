@@ -23,9 +23,80 @@
     master.connect(ctx.destination);
     started = true;
     startAmbient();
+    startMusic();
   }
 
   const out = () => master || (ctx && ctx.destination);
+
+  // ============================================================
+  // Procedural Ancient-Egyptian background music
+  // Double-harmonic ("Hijaz") scale, plucked oud/harp + frame-drum + drone.
+  // ============================================================
+  let musicOn = true, musicGain = null, musicTimer = null, mStep = 0, mNextT = 0;
+  const ROOTF = 146.83;                 // ~D3
+  const SCALE = [0, 1, 4, 5, 7, 8, 11]; // double harmonic major (exotic, Egyptian feel)
+  const TEMPO = 90, STEPDUR = 60 / TEMPO / 2; // 8th-note steps
+  // 16-step (2-bar) loop. Melody = indices into the scale (null = rest).
+  const MEL = [7, null, 9, 10, 9, 7, 5, 7, 4, 5, 7, null, 5, 4, 2, 0];
+  const DUM = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0]; // low drum
+  const TEK = [0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1]; // high drum
+
+  function noteFreq(i) {
+    const oct = Math.floor(i / SCALE.length);
+    return ROOTF * Math.pow(2, (SCALE[i % SCALE.length] + 12 * oct) / 12);
+  }
+  function pluck(freq, t, dur, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle"; o.frequency.value = freq;
+    const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.type = "sine"; o2.frequency.value = freq * 2; g2.gain.value = 0.3;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); o2.connect(g2).connect(g); g.connect(musicGain);
+    o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+  }
+  function drum(low, t) {
+    if (low) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(52, t + 0.12);
+      g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g).connect(musicGain); o.start(t); o.stop(t + 0.22);
+    } else {
+      const src = ctx.createBufferSource();
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      src.buffer = buf;
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 2200;
+      const g = ctx.createGain(); g.gain.value = 0.22;
+      src.connect(hp).connect(g).connect(musicGain); src.start(t);
+    }
+  }
+  function playStep(s, t) {
+    const m = MEL[s];
+    if (m !== null) pluck(noteFreq(m), t, STEPDUR * 1.7, 0.13);
+    if (DUM[s]) drum(true, t);
+    if (TEK[s]) drum(false, t);
+  }
+  function musicScheduler() {
+    while (mNextT < ctx.currentTime + 0.25) { playStep(mStep, mNextT); mStep = (mStep + 1) % 16; mNextT += STEPDUR; }
+  }
+  function startMusic() {
+    if (!ctx || musicTimer) return;
+    musicGain = ctx.createGain(); musicGain.gain.value = musicOn ? 0.5 : 0; musicGain.connect(out());
+    // sustained drone (root octave below + a fifth)
+    [ROOTF / 2, ROOTF * 0.75].forEach((f, i) => {
+      const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f;
+      const g = ctx.createGain(); g.gain.value = 0.06;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.05 + i * 0.03;
+      const lg = ctx.createGain(); lg.gain.value = 0.02;
+      lfo.connect(lg).connect(g.gain);
+      o.connect(g).connect(musicGain); o.start(); lfo.start();
+    });
+    mNextT = ctx.currentTime + 0.12; mStep = 0;
+    musicTimer = setInterval(musicScheduler, 40);
+  }
 
   // Low, breathy temple drone built from a couple of detuned oscillators
   // plus filtered noise wind.
@@ -110,6 +181,7 @@
     isReady: () => started,
     setVolume(v) { _vol = Math.max(0, Math.min(1, v)); if (master) master.gain.value = _mute ? 0 : _vol; },
     setMute(b) { _mute = !!b; if (master) master.gain.value = _mute ? 0 : _vol; },
+    setMusicEnabled(b) { musicOn = !!b; if (musicGain) musicGain.gain.value = musicOn ? 0.5 : 0; },
 
     // "come alive" whoosh when entering a painting
     whoosh() {

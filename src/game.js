@@ -38,7 +38,8 @@
     // settings inputs
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
-    setQuality: $("setQuality"), setFog: $("setFog"),
+    setQuality: $("setQuality"), setFog: $("setFog"), setMusic: $("setMusic"),
+    quests: $("quests"), questMain: $("questMain"), questSide: $("questSide"), btnQuestsClose: $("btnQuestsClose"),
   };
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
@@ -109,6 +110,7 @@
     enemies: [],
     npcs: [],
     dialogue: null,
+    quests: { khufu: "unstarted" },
     health: 100, maxHealth: 100, lastHit: 0,
     objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
@@ -726,11 +728,22 @@
   // ============================================================
   const NPC_DEFS = [
     { name: "Merchant Khufu", x: -34, z: -3, colors: { cloth: "#2f6f8f", skin: "#c8854f" },
-      lines: [
-        "Greetings, wanderer! Welcome to our humble city.",
-        "Trade is slow with shades prowling the streets after dusk.",
-        "Strike them with your light and they'll trouble us no more.",
-      ] },
+      dynamic: () => {
+        const got = collectedScarabs();
+        if (state.quests.khufu === "done")
+          return { lines: ["Thank you again, friend — the city prospers thanks to you."] };
+        if (state.quests.khufu === "active") {
+          if (got >= 3) return {
+            lines: ["You found three sacred scarabs! Bless you, traveller.", "Take Ra's blessing — your vigour is restored."],
+            onClose: () => { state.quests.khufu = "done"; state.health = state.maxHealth; updateHealthHud(); renderQuests(); saveGame(); toast("Quest complete: Scarabs for Khufu!", 2600); },
+          };
+          return { lines: ["You have " + got + " of 3 sacred scarabs.", "They glint on rooftops and by the old shrine — keep looking!"] };
+        }
+        return {
+          lines: ["Greetings, wanderer! Welcome to our humble city.", "Trade is slow with shades about… Could you gather 3 sacred scarabs?", "Find them and return to me for a blessing."],
+          onClose: () => { state.quests.khufu = "active"; renderQuests(); saveGame(); toast("New quest: Scarabs for Khufu", 2400); },
+        };
+      } },
     { name: "High Priest Senu", x: -2, z: -7, colors: { cloth: "#efe6cf", skin: "#c8854f", hair: "#2c1d0f" },
       lines: [
         "The frescoes remember what stone forgets.",
@@ -765,26 +778,57 @@
     });
     return best;
   }
+  const collectedScarabs = () => world.scarabs.filter((s) => s.collected).length;
   function openDialogue(n) {
-    state.dialogue = { n, i: 0 };
+    const d = n.def.dynamic ? n.def.dynamic() : { lines: n.def.lines };
+    state.dialogue = { n, i: 0, lines: d.lines, onClose: d.onClose };
     camera.detachControl(); // freeze the player while talking
     dom.dlgName.textContent = n.def.name;
-    dom.dlgText.textContent = n.def.lines[0];
+    dom.dlgText.textContent = d.lines[0];
     dom.dialogue.classList.remove("hidden");
     document.exitPointerLock && document.exitPointerLock();
   }
   function advanceDialogue() {
     const d = state.dialogue; if (!d) return;
     d.i++;
-    if (d.i >= d.n.def.lines.length) { closeDialogue(); return; }
-    dom.dlgText.textContent = d.n.def.lines[d.i];
+    if (d.i >= d.lines.length) { closeDialogue(); return; }
+    dom.dlgText.textContent = d.lines[d.i];
   }
   function closeDialogue() {
     if (!state.dialogue) return;
+    const onClose = state.dialogue.onClose;
     state.dialogue = null;
     dom.dialogue.classList.add("hidden");
     camera.attachControl(canvas, true);
+    if (onClose) onClose();
     if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
+  }
+  // ---- quest log ----
+  function renderQuests() {
+    // main story = current objectives
+    const got = collectedScarabs(), total = world.scarabs.length;
+    const main = [
+      { done: state.objectives.door, t: "Open the sealed eastern door" },
+      { done: state.objectives.light, t: "Restore Ra's light" },
+      { done: state.objectives.barque, t: "Sail the Sacred Barque" },
+      { done: got >= total, t: "Recover the Sacred Scarabs (" + got + "/" + total + ")" },
+      { done: state.objectives.boss, t: "Defeat the guardian Anubis" },
+    ];
+    if (state.objectives.boss) main.push({ done: state.objectives.treasure, t: "Claim the Pharaoh's treasure" });
+    dom.questMain.innerHTML = main.map((q) => `<li class="${q.done ? "done" : ""}">${q.t}</li>`).join("");
+    // side quests
+    const side = [];
+    const q = state.quests.khufu;
+    if (q !== "unstarted") {
+      const done = q === "done";
+      side.push(`<li class="${done ? "done" : ""}">Scarabs for Khufu <span class="q-prog">— ${done ? "complete" : Math.min(3, got) + "/3 collected"}</span></li>`);
+    }
+    dom.questSide.innerHTML = side.length ? side.join("") : '<li class="quest-empty">Talk to citizens to find side quests.</li>';
+  }
+  function toggleQuests() {
+    if (!state.started || state.mode === "2d") return;
+    if (currentOverlay === "quests") closeOverlay();
+    else if (!currentOverlay) { renderQuests(); openOverlay("quests"); }
   }
   // clicking/tapping the dialogue box itself advances (box is a DOM element over the canvas)
   dom.dialogue.addEventListener("click", advanceDialogue);
@@ -985,10 +1029,11 @@
     if (state.dialogue) { if (e.key === "Escape") closeDialogue(); return; }
     if (k === "i" && state.mode !== "2d") { toggleInventory(); return; }
     if (k === "m" && state.mode !== "2d") { toggleMap(); return; }
+    if (k === "j" && state.mode !== "2d") { toggleQuests(); return; }
     if (e.key === "Escape") {
       if (state.mode === "2d") return;
       if (!dom.settings.classList.contains("hidden")) { showScreen(settingsReturn === "pause" ? "pause" : "menu"); return; }
-      if (currentOverlay === "inventory" || currentOverlay === "map") closeOverlay();
+      if (currentOverlay === "inventory" || currentOverlay === "map" || currentOverlay === "quests") closeOverlay();
       else if (currentOverlay === "pause") resumeGame();
       else pauseGame();
     }
@@ -1148,7 +1193,7 @@
   // SETTINGS (persisted to localStorage, applied live)
   // ============================================================
   const SETTINGS_KEY = "wotf_settings";
-  const defaults = { volume: 70, mute: false, sensLevel: 6, fovDeg: 75, quality: "high", fog: true };
+  const defaults = { volume: 70, mute: false, sensLevel: 6, fovDeg: 75, quality: "high", fog: true, music: true };
   let settings = Object.assign({}, defaults, loadSettings());
 
   function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; } }
@@ -1166,6 +1211,7 @@
     camera.fov = fov; menuCam.fov = fov;
     scene.fogMode = settings.fog ? B.Scene.FOGMODE_EXP2 : B.Scene.FOGMODE_NONE;
     Sound.setVolume(settings.volume / 100); Sound.setMute(settings.mute);
+    Sound.setMusicEnabled(settings.music);
     applyQuality(settings.quality);
   }
   function bindSettingsUI() {
@@ -1175,6 +1221,7 @@
     dom.setFov.value = settings.fovDeg; dom.setFovVal.textContent = settings.fovDeg;
     dom.setQuality.value = settings.quality;
     dom.setFog.checked = settings.fog;
+    dom.setMusic.checked = settings.music;
   }
   dom.setVolume.addEventListener("input", () => { settings.volume = +dom.setVolume.value; dom.setVolumeVal.textContent = settings.volume; applySettings(); saveSettings(); });
   dom.setMute.addEventListener("change", () => { settings.mute = dom.setMute.checked; applySettings(); saveSettings(); });
@@ -1182,6 +1229,7 @@
   dom.setFov.addEventListener("input", () => { settings.fovDeg = +dom.setFov.value; dom.setFovVal.textContent = settings.fovDeg; applySettings(); saveSettings(); });
   dom.setQuality.addEventListener("change", () => { settings.quality = dom.setQuality.value; applySettings(); saveSettings(); });
   dom.setFog.addEventListener("change", () => { settings.fog = dom.setFog.checked; applySettings(); saveSettings(); });
+  dom.setMusic.addEventListener("change", () => { settings.music = dom.setMusic.checked; applySettings(); saveSettings(); });
 
   // ============================================================
   // SCARABS + INVENTORY
@@ -1200,7 +1248,7 @@
         updateScarabHud();
         const got = world.scarabs.filter((x) => x.collected).length;
         toast("Sacred Scarab found!  (" + got + "/" + world.scarabs.length + ")", 1800);
-        renderObjectives();
+        renderObjectives(); renderQuests();
         saveGame();
         if (currentOverlay === "inventory") buildInventory();
       }
@@ -1242,6 +1290,7 @@
       obj: { door: !!state.objectives.door, light: !!state.objectives.light, barque: !!state.objectives.barque, boss: !!state.objectives.boss, treasure: !!state.objectives.treasure },
       solved: { nile: !!(findDef("nile") || {}).solved, climb: !!(findDef("climb") || {}).solved, boat: !!(findDef("boat") || {}).solved },
       companions: state.companions.map((c) => c.colors || {}),
+      quests: state.quests,
       scarabs: world.scarabs.filter((s) => s.collected).map((s) => s.id),
       cam: { p: [camera.position.x, camera.position.y, camera.position.z], r: [camera.rotation.x, camera.rotation.y, camera.rotation.z] },
     };
@@ -1256,6 +1305,7 @@
     if (d.solved && d.solved.boat && world.boat3D) { world.boat3D.position.x = world.boatFar.x; world.boat3D.position.z = world.boatFar.z; }
     if (d.obj.boss) { const a = findDef("anubis"); if (a) a.mesh.material.emissiveColor = new B.Color3(0.3, 0.12, 0.04); }
     if (d.obj.boss && !d.obj.treasure) spawnTreasure();
+    if (d.quests) state.quests = Object.assign({ khufu: "unstarted" }, d.quests);
     (d.companions || []).forEach((col) => spawnCompanion(col));
     (d.scarabs || []).forEach((id) => { const s = world.scarabs.find((x) => x.id === id); if (s) { s.collected = true; s.root.setEnabled(false); } });
     if (d.cam) { camera.position = new B.Vector3(d.cam.p[0], d.cam.p[1], d.cam.p[2]); camera.rotation = new B.Vector3(d.cam.r[0], d.cam.r[1], d.cam.r[2]); }
@@ -1266,7 +1316,7 @@
   // ============================================================
   // SCREEN / MENU FLOW
   // ============================================================
-  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map"];
+  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map", "quests"];
   function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
   let settingsReturn = "menu";
   let currentOverlay = null; // "pause" | "inventory" | null (in-game overlays)
@@ -1345,6 +1395,7 @@
   dom.btnVictoryMenu.addEventListener("click", () => { sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
   dom.btnMapClose.addEventListener("click", closeOverlay);
   dom.minimap.addEventListener("click", toggleMap);
+  dom.btnQuestsClose.addEventListener("click", closeOverlay);
   dom.tcMap.addEventListener("touchstart", (e) => { e.preventDefault(); toggleMap(); }, { passive: false });
 
   // first user gesture anywhere enables audio (autoplay policy)

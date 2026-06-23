@@ -22,8 +22,14 @@ location, the treasure, the secret scarabs, buildings and the oasis, with
 **fast‑travel** buttons to the Temple Gate, Temple Hall, Ancient City and Oasis.
 
 **Citizens** live in the city — a merchant, a high priest and a street child.
-Walk up and press **E** to talk; they share lore and hints (the priest tells
-you the path; the child points you to the secret scarabs).
+Walk up and press **E** to talk; they share lore and hints. **Merchant Khufu**
+offers a **side quest** ("gather 3 Sacred Scarabs") that you can track in the
+**Quest Log** (`J`) and turn in for a reward.
+
+**Music & audio:** a unique **procedural Ancient‑Egyptian score** — a plucked
+oud/harp melody in the double‑harmonic (Hijaz) scale over a frame‑drum groove
+and a low drone — plays under the ambient temple wind and SFX. Toggle it (and
+master volume / mute) in **Settings**.
 
 Everything (terrain, props, characters, the guardian) is generated from
 primitives + flat shading at runtime, so the world stays stylistically unified
@@ -73,6 +79,7 @@ walk near one to collect it.
 | Pause | `Esc` | ⏸ button | Start |
 | Inventory | `I` | — | — |
 | Map | `M` (or click minimap) | 🗺 button | — |
+| Quest log | `J` | — | — |
 
 Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
 (right side); a connected **gamepad** drives movement and look automatically.

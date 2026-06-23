@@ -75,7 +75,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Difficulty modes** (S) — Story / Normal / Hard scaling HP, damage, weak-spot windows.
 
 ## 7. Story, quests & content
-- [ ] **Quest/objective system** (M) — main + side quests, a journal/quest log UI (extends the current objectives panel).
+- [x] **Quest log + a side quest** — journal (J) with main story + NPC side quest (Scarabs for Khufu). ✅ (more quests TBD)
 - [ ] **Narrative & cutscenes** (L) — intro, between-zone story beats, ending.
 - [ ] **Lore codex** (S) — unlockable entries on gods, glyphs, history.
 - [ ] **Hieroglyph "language" puzzle** (M) — learn glyphs to decode doors.
@@ -91,7 +91,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Localization / i18n** (M) — externalize strings; multi-language.
 
 ## 9. Audio
-- [ ] **Real recorded audio** (M) — ambient beds, SFX, a proper score (replace procedural placeholders, keep procedural as fallback).
+- [x] **Procedural Egyptian music** — Hijaz-scale oud/harp + frame-drum + drone, with a Music toggle. ✅ (recorded score TBD)
 - [ ] **Adaptive/dynamic music** (L) — calm explore → tense boss layers.
 - [ ] **3D positional audio** (S) — Babylon spatial sound for torches, water, enemies.
 - [ ] **Voice / narration** (M).
