@@ -37,17 +37,88 @@
     <div class="touch-btn" id="tcAction">⚔ / E</div>
   </div>
 
-  <!-- Title / start overlay -->
-  <div id="overlay">
-    <h1>WHISPERS OF THE FRESCO</h1>
-    <h2>A Low-Poly Tale of Ancient Egypt</h2>
-    <button class="start-btn" id="startBtn">ENTER THE TEMPLE</button>
-    <p class="hint">
-      Cross the low-poly desert from the gate, past pyramids and an oasis, into the
-      temple. Look at a wall mural and press <b>E</b> to step <i>into</i> the painting —
-      control the flat painted figure to solve puzzles that reshape the 3D world. Open
-      the sealed door, restore Ra's light, then face the guardian Anubis.
-    </p>
+  <!-- ===== Studio splash ===== -->
+  <div id="splash" class="screen">
+    <div class="studio">Hela<b>O2</b> Studio</div>
+    <div class="presents">presents</div>
+  </div>
+
+  <!-- ===== Main menu ===== -->
+  <div id="menu" class="screen hidden">
+    <div class="menu-title">WHISPERS<span>OF THE</span>FRESCO</div>
+    <div class="menu-sub">A Low-Poly Tale of Ancient Egypt</div>
+    <div class="menu-buttons">
+      <button class="mbtn" id="btnPlay">PLAY</button>
+      <button class="mbtn ghost" id="btnSettings">SETTINGS</button>
+      <button class="mbtn ghost" id="btnCredits">CREDITS</button>
+    </div>
+    <div class="menu-foot">© HelaO2 Studio</div>
+  </div>
+
+  <!-- ===== Settings ===== -->
+  <div id="settings" class="screen hidden">
+    <div class="panel-box">
+      <h2>Settings</h2>
+      <div class="setting-row">
+        <label for="setVolume">Master Volume</label>
+        <div class="control"><input type="range" id="setVolume" min="0" max="100" step="1">
+          <span class="val" id="setVolumeVal">70</span></div>
+      </div>
+      <div class="setting-row">
+        <label for="setMute">Mute</label>
+        <div class="control"><input type="checkbox" id="setMute"></div>
+      </div>
+      <div class="setting-row">
+        <label for="setSens">Look Sensitivity</label>
+        <div class="control"><input type="range" id="setSens" min="1" max="10" step="1">
+          <span class="val" id="setSensVal">6</span></div>
+      </div>
+      <div class="setting-row">
+        <label for="setFov">Field of View</label>
+        <div class="control"><input type="range" id="setFov" min="60" max="90" step="1">
+          <span class="val" id="setFovVal">75</span></div>
+      </div>
+      <div class="setting-row">
+        <label for="setQuality">Graphics Quality</label>
+        <div class="control"><select id="setQuality">
+          <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+        </select></div>
+      </div>
+      <div class="setting-row">
+        <label for="setFog">Atmospheric Fog</label>
+        <div class="control"><input type="checkbox" id="setFog"></div>
+      </div>
+      <div class="panel-actions">
+        <button class="mbtn" id="btnSettingsBack">BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Credits ===== -->
+  <div id="credits" class="screen hidden">
+    <div class="panel-box">
+      <h2>Credits</h2>
+      <div class="credits-text">
+        <b>HelaO2 Studio</b><br>
+        Whispers of the Fresco<br><br>
+        A first/second-person dual-perspective puzzle-adventure<br>
+        set in Ancient Egypt.<br><br>
+        Built with <b>Babylon.js</b> — all art &amp; audio generated procedurally.<br>
+      </div>
+      <div class="panel-actions">
+        <button class="mbtn" id="btnCreditsBack">BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Pause ===== -->
+  <div id="pause" class="screen hidden">
+    <div class="pause-title">PAUSED</div>
+    <div class="menu-buttons">
+      <button class="mbtn" id="btnResume">RESUME</button>
+      <button class="mbtn ghost" id="btnPauseSettings">SETTINGS</button>
+      <button class="mbtn ghost" id="btnMainMenu">MAIN MENU</button>
+    </div>
   </div>
 
   <!-- Babylon.js (core + GUI) from CDN -->

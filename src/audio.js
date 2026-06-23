@@ -8,23 +8,31 @@
 
   let ctx = null;
   let ambientGain = null;
+  let master = null;
   let started = false;
+  let _vol = 0.7;   // 0..1 master volume
+  let _mute = false;
 
   function init() {
     if (started) return;
     const AC = global.AudioContext || global.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = _mute ? 0 : _vol;
+    master.connect(ctx.destination);
     started = true;
     startAmbient();
   }
+
+  const out = () => master || (ctx && ctx.destination);
 
   // Low, breathy temple drone built from a couple of detuned oscillators
   // plus filtered noise wind.
   function startAmbient() {
     ambientGain = ctx.createGain();
     ambientGain.gain.value = 0.0;
-    ambientGain.connect(ctx.destination);
+    ambientGain.connect(out());
     ambientGain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 4);
 
     const drone = ctx.createGain();
@@ -75,7 +83,7 @@
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(vol || 0.2, ctx.currentTime + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(out());
     o.start();
     o.stop(ctx.currentTime + dur + 0.05);
   }
@@ -92,7 +100,7 @@
     bp.frequency.value = filterFreq || 800;
     const g = ctx.createGain();
     g.gain.value = vol || 0.3;
-    src.connect(bp).connect(g).connect(ctx.destination);
+    src.connect(bp).connect(g).connect(out());
     src.start();
   }
 
@@ -100,6 +108,8 @@
   const Sound = {
     init,
     isReady: () => started,
+    setVolume(v) { _vol = Math.max(0, Math.min(1, v)); if (master) master.gain.value = _mute ? 0 : _vol; },
+    setMute(b) { _mute = !!b; if (master) master.gain.value = _mute ? 0 : _vol; },
 
     // "come alive" whoosh when entering a painting
     whoosh() {

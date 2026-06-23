@@ -198,6 +198,7 @@
     rayMat.alpha = 0.05;
     rayMat.alphaMode = B.Engine.ALPHA_ADD;
     rayMat.fogEnabled = false;
+    const godRays = [];
     [[-5, -3], [2, 2], [5, 7]].forEach((p, i) => {
       const shaft = B.MeshBuilder.CreateCylinder("ray" + i,
         { height: 11, diameterTop: 0.5, diameterBottom: 3.0, tessellation: 8 }, scene);
@@ -205,6 +206,7 @@
       shaft.position.set(p[0], 5.5, p[1]);
       shaft.rotation.x = 0.32; shaft.rotation.z = -0.18;
       shaft.isPickable = false;
+      godRays.push(shaft);
     });
 
     // ---- floating dust motes ----
@@ -232,6 +234,38 @@
     dust.minEmitPower = 0.02; dust.maxEmitPower = 0.08;
     dust.start();
 
+    // ---- distant mountain range ringing the world ----
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + LP.hash(i, 1) * 0.25;
+      const r = 72 + LP.hash(i, 2) * 18;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      LP.mountain(new B.Vector3(x, heightAt(x, z) - 1, z), 12 + LP.hash(i, 3) * 18, 8 + LP.hash(i, 4) * 7);
+    }
+    // ---- a few flat-topped mesas at mid distance ----
+    [[-50, 22], [44, -52], [58, 30], [-34, -48]].forEach((p, i) => {
+      LP.mesa(new B.Vector3(p[0], heightAt(p[0], p[1]), p[1]), 6 + i, 5 + i * 1.5);
+    });
+    // ---- extra boulder fields ----
+    for (let i = 0; i < 20; i++) {
+      const a = LP.hash(i, 21) * Math.PI * 2, r = 20 + LP.hash(i, 22) * 56;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (Math.hypot(x - 38, z + 8) < 16) continue;
+      LP.rock(new B.Vector3(x, heightAt(x, z), z), 0.6 + LP.hash(i, 23) * 1.7);
+    }
+    // ---- a flock of birds circling over the oasis ----
+    const birds = [];
+    for (let i = 0; i < 5; i++) birds.push({ bd: LP.bird(), a: i * 1.25, r: 9 + i * 2.2, h: 22 + i * 1.5, sp: 0.5 + i * 0.08 });
+    scene.onBeforeRenderObservable.add(() => {
+      const t = performance.now() * 0.001;
+      birds.forEach((b) => {
+        b.a += b.sp * 0.004;
+        b.bd.root.position.set(38 + Math.cos(b.a) * b.r, b.h + Math.sin(t + b.a) * 0.6, -8 + Math.sin(b.a) * b.r);
+        b.bd.root.rotation.y = -b.a;
+        const flap = Math.sin(t * 8 + b.a) * 0.6;
+        b.bd.wl.rotation.z = flap; b.bd.wr.rotation.z = -flap;
+      });
+    });
+
     // ---- the sacred barque on the oasis (driven by the barque fresco puzzle) ----
     const boatDock = new B.Vector3(33, -0.35, -16);
     const boatFar = new B.Vector3(43, -0.35, 0);
@@ -249,7 +283,7 @@
     const spawn = new B.Vector3(0, 1.7, -34);
 
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
-             boat3D, boatDock, boatFar, center: B.Vector3.Zero() };
+             boat3D, boatDock, boatFar, dust, godRays, center: B.Vector3.Zero() };
   }
 
   global.World = { build };

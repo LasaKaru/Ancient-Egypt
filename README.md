@@ -39,8 +39,11 @@ The game is a static site with **no build step**.
 - Or just open `index.html` directly in a modern browser (needs internet for
   the Babylon.js CDN).
 
-Click **Enter the Temple** to start (this also unlocks audio, which browsers
-require to begin from a user gesture).
+On launch you get a **HelaO2 Studio** intro, then the **main menu** (Play /
+Settings / Credits) over a slowly orbiting view of the world. **Settings**
+(master volume, mute, look sensitivity, FOV, graphics quality, fog) apply live
+and are saved to `localStorage`. Press **Esc** in-game for the **pause menu**
+(Resume / Settings / Main Menu).
 
 ## Controls
 
@@ -52,6 +55,7 @@ require to begin from a user gesture).
 | Move painted figure (2D) | `←` `→` / `A` `D` | ◀ ▶ buttons |
 | Exit a painting | `E` | ✕ button |
 | Strike the guardian | Click / `Space` | ⚔ button |
+| Pause | `Esc` | — |
 
 ## The mechanic
 

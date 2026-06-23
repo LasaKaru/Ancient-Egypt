@@ -17,19 +17,20 @@
   scene.collisionsEnabled = true;
 
   // ---------- DOM ----------
+  const $ = (id) => document.getElementById(id);
   const dom = {
-    instructions: document.getElementById("instructions"),
-    objList: document.getElementById("objList"),
-    crosshair: document.getElementById("crosshair"),
-    overlay: document.getElementById("overlay"),
-    startBtn: document.getElementById("startBtn"),
-    toast: document.getElementById("toast"),
-    bossBar: document.getElementById("bossBar"),
-    bossFill: document.getElementById("bossFill"),
-    touch: document.getElementById("touchControls"),
-    tcLeft: document.getElementById("tcLeft"),
-    tcRight: document.getElementById("tcRight"),
-    tcAction: document.getElementById("tcAction"),
+    instructions: $("instructions"), objList: $("objList"), crosshair: $("crosshair"),
+    toast: $("toast"), bossBar: $("bossBar"), bossFill: $("bossFill"),
+    touch: $("touchControls"), tcLeft: $("tcLeft"), tcRight: $("tcRight"), tcAction: $("tcAction"),
+    // screens
+    splash: $("splash"), menu: $("menu"), settings: $("settings"), credits: $("credits"), pause: $("pause"),
+    btnPlay: $("btnPlay"), btnSettings: $("btnSettings"), btnCredits: $("btnCredits"),
+    btnSettingsBack: $("btnSettingsBack"), btnCreditsBack: $("btnCreditsBack"),
+    btnResume: $("btnResume"), btnPauseSettings: $("btnPauseSettings"), btnMainMenu: $("btnMainMenu"),
+    // settings inputs
+    setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
+    setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
+    setQuality: $("setQuality"), setFog: $("setFog"),
   };
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
@@ -52,6 +53,12 @@
   camera.keysLeft = [65, 37];
   camera.keysRight = [68, 39];
   camera.setTarget(new B.Vector3(0, EYE, 0));
+  camera.detachControl(); // gameplay camera stays inactive until PLAY
+
+  // ---------- menu camera (slow cinematic orbit behind the menus) ----------
+  const menuCam = new B.ArcRotateCamera("menuCam", Math.PI * 0.85, 1.12, 30, new B.Vector3(0, 2.2, 0), scene);
+  menuCam.fov = 0.9;
+  scene.activeCamera = menuCam;
 
   // ---------- held flashlight (first-person viewmodel + spotlight) ----------
   const flashlight = LP.flashlight();
@@ -64,6 +71,7 @@
   flashSpot.intensity = 0.75;
   flashSpot.diffuse = new B.Color3(1, 0.92, 0.72);
   flashSpot.range = 22;
+  flashlight.setEnabled(false); flashSpot.setEnabled(false); // off until gameplay
 
   // ---------- sealed door (low-poly) — fills the eastern doorway to the oasis ----------
   const door = LP.box(0.6, 4, 6, LP.mat("#b89a5e"), "door");
@@ -76,6 +84,7 @@
   // ============================================================
   const state = {
     started: false,
+    paused: false,
     mode: "3d",
     currentMural: null,
     paintedChar: null,
@@ -639,6 +648,7 @@
   }
 
   scene.onKeyboardObservable.add((kb) => {
+    if (!state.started || state.paused) return;
     const down = kb.type === B.KeyboardEventTypes.KEYDOWN;
     const key = kb.event.key.toLowerCase();
     if (state.mode === "2d") {
@@ -654,8 +664,16 @@
 
   scene.onPointerObservable.add((pi) => {
     if (pi.type !== B.PointerEventTypes.POINTERDOWN) return;
+    if (!state.started || state.paused) return;
     if (state.mode === "boss") { hitBoss(); return; }
     if (state.mode === "3d" && document.pointerLockElement !== canvas) canvas.requestPointerLock();
+  });
+
+  // Esc toggles pause during gameplay
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && state.started && state.mode !== "2d") {
+      if (state.paused) resumeGame(); else pauseGame();
+    }
   });
 
   function showTouch(show) {
@@ -688,7 +706,8 @@
     const now = performance.now();
     const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
     scene.render();
-    if (!state.started) return;
+    if (!state.started) { menuCam.alpha += dt * 0.06; return; } // cinematic menu orbit
+    if (state.paused) return;
     updateTweens(dt);
     updateCompanions(dt);
 
@@ -714,20 +733,105 @@
   window.addEventListener("resize", () => engine.resize());
 
   // ============================================================
-  // START
+  // SETTINGS (persisted to localStorage, applied live)
   // ============================================================
+  const SETTINGS_KEY = "wotf_settings";
+  const defaults = { volume: 70, mute: false, sensLevel: 6, fovDeg: 75, quality: "high", fog: true };
+  let settings = Object.assign({}, defaults, loadSettings());
+
+  function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; } }
+  function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+
+  function applyQuality(q) {
+    engine.setHardwareScalingLevel(q === "low" ? 1.7 : q === "medium" ? 1.3 : 1.0);
+    const fx = q !== "low";
+    if (world.dust) { fx ? world.dust.start() : world.dust.stop(); }
+    if (world.godRays) world.godRays.forEach((m) => m.setEnabled(fx));
+  }
+  function applySettings() {
+    camera.angularSensibility = 5500 - settings.sensLevel * 450;
+    const fov = settings.fovDeg * Math.PI / 180;
+    camera.fov = fov; menuCam.fov = fov;
+    scene.fogMode = settings.fog ? B.Scene.FOGMODE_EXP2 : B.Scene.FOGMODE_NONE;
+    Sound.setVolume(settings.volume / 100); Sound.setMute(settings.mute);
+    applyQuality(settings.quality);
+  }
+  function bindSettingsUI() {
+    dom.setVolume.value = settings.volume; dom.setVolumeVal.textContent = settings.volume;
+    dom.setMute.checked = settings.mute;
+    dom.setSens.value = settings.sensLevel; dom.setSensVal.textContent = settings.sensLevel;
+    dom.setFov.value = settings.fovDeg; dom.setFovVal.textContent = settings.fovDeg;
+    dom.setQuality.value = settings.quality;
+    dom.setFog.checked = settings.fog;
+  }
+  dom.setVolume.addEventListener("input", () => { settings.volume = +dom.setVolume.value; dom.setVolumeVal.textContent = settings.volume; applySettings(); saveSettings(); });
+  dom.setMute.addEventListener("change", () => { settings.mute = dom.setMute.checked; applySettings(); saveSettings(); });
+  dom.setSens.addEventListener("input", () => { settings.sensLevel = +dom.setSens.value; dom.setSensVal.textContent = settings.sensLevel; applySettings(); saveSettings(); });
+  dom.setFov.addEventListener("input", () => { settings.fovDeg = +dom.setFov.value; dom.setFovVal.textContent = settings.fovDeg; applySettings(); saveSettings(); });
+  dom.setQuality.addEventListener("change", () => { settings.quality = dom.setQuality.value; applySettings(); saveSettings(); });
+  dom.setFog.addEventListener("change", () => { settings.fog = dom.setFog.checked; applySettings(); saveSettings(); });
+
+  // ============================================================
+  // SCREEN / MENU FLOW
+  // ============================================================
+  const screens = ["splash", "menu", "settings", "credits", "pause"];
+  function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
+  let settingsReturn = "menu";
+
+  function openSettings(ret) { settingsReturn = ret; bindSettingsUI(); showScreen("settings"); }
+
+  function runIntro() {
+    applySettings();
+    if (sessionStorage.getItem("wotf_skipIntro")) { showScreen("menu"); return; }
+    showScreen("splash");
+    setTimeout(() => { sessionStorage.setItem("wotf_skipIntro", "1"); showScreen("menu"); }, 3800);
+  }
+
   function startGame() {
     if (state.started) return;
     state.started = true;
     Sound.init();
-    dom.overlay.classList.add("hidden");
+    applySettings();
+    showScreen(null);
+    document.body.classList.add("playing");
+    scene.activeCamera = camera;
+    camera.position = world.spawn.clone();
+    camera.attachControl(canvas, true);
+    flashlight.setEnabled(true); flashSpot.setEnabled(true);
     dom.crosshair.style.display = "block";
     renderObjectives();
     showTouch(isTouch);
     setInstr(defaultInstr());
-    if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 50);
+    if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
   }
-  dom.startBtn.addEventListener("click", startGame);
+
+  function pauseGame() {
+    if (!state.started || state.paused || state.mode === "2d") return;
+    state.paused = true;
+    showScreen("pause");
+    document.exitPointerLock && document.exitPointerLock();
+  }
+  function resumeGame() {
+    if (!state.paused) return;
+    state.paused = false;
+    showScreen(null);
+    if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
+  }
+
+  // wire buttons
+  dom.btnPlay.addEventListener("click", startGame);
+  dom.btnSettings.addEventListener("click", () => openSettings("menu"));
+  dom.btnCredits.addEventListener("click", () => showScreen("credits"));
+  dom.btnSettingsBack.addEventListener("click", () => showScreen(settingsReturn === "pause" ? "pause" : "menu"));
+  dom.btnCreditsBack.addEventListener("click", () => showScreen("menu"));
+  dom.btnResume.addEventListener("click", resumeGame);
+  dom.btnPauseSettings.addEventListener("click", () => openSettings("pause"));
+  dom.btnMainMenu.addEventListener("click", () => { sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
+
+  // first user gesture anywhere enables audio (autoplay policy)
+  window.addEventListener("pointerdown", () => Sound.init(), { once: true });
+
+  runIntro();
 
   console.log("%c[Whispers of the Fresco] low-poly world ready — Babylon.js",
     "color:#4ade80;font-weight:bold");

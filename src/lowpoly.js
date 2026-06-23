@@ -362,6 +362,46 @@
     return root;
   }
 
+  // ---------- low-poly mountains / mesas ----------
+  function mountain(pos, h, baseR) {
+    const root = new B.TransformNode("mountain", _scene);
+    root.position = pos.clone();
+    const rockA = mat("#8a7d68"), rockB = mat("#6f6552");
+    const peak = cyl(h, baseR * 0.12, baseR, 5, rockA, "peak");
+    peak.parent = root; peak.position.y = h / 2; peak.rotation.y = hash(pos.x, pos.z) * Math.PI;
+    for (let i = 0; i < 3; i++) {
+      const sh = h * (0.4 + hash(i, pos.x) * 0.4);
+      const sr = baseR * (0.4 + hash(i, pos.z) * 0.3);
+      const sp = cyl(sh, sr * 0.12, sr, 5, i % 2 ? rockB : rockA, "subpeak");
+      sp.parent = root;
+      const a = hash(i, 9) * Math.PI * 2, d = baseR * 0.55;
+      sp.position.set(Math.cos(a) * d, sh / 2, Math.sin(a) * d);
+      sp.rotation.y = hash(a, i) * Math.PI;
+    }
+    root.isPickable = false;
+    return root;
+  }
+
+  function mesa(pos, r, h) {
+    const m = cyl(h, r * 0.85, r, 6, mat("#b89a6a"), "mesa");
+    m.position = pos.clone(); m.position.y = pos.y + h / 2;
+    m.rotation.y = hash(pos.x, pos.z) * Math.PI;
+    m.checkCollisions = true;
+    return m;
+  }
+
+  // ---------- low-poly bird (for flocks) ----------
+  function bird() {
+    const root = new B.TransformNode("bird", _scene);
+    const m = mat("#2a2018");
+    const wl = box(0.9, 0.05, 0.34, m, "wingL"); flat(wl); wl.parent = root; wl.position.x = -0.5;
+    const wr = box(0.9, 0.05, 0.34, m, "wingR"); flat(wr); wr.parent = root; wr.position.x = 0.5;
+    wl.setPivotPoint(new B.Vector3(0.45, 0, 0));
+    wr.setPivotPoint(new B.Vector3(-0.45, 0, 0));
+    root.getChildMeshes().forEach((x) => { x.isPickable = false; });
+    return { root, wl, wr };
+  }
+
   // ---------- low-poly reed boat (papyrus skiff) ----------
   function boat(pos) {
     const root = new B.TransformNode("boat3d", _scene);
@@ -405,6 +445,6 @@
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
-    flashlight, candle, boat,
+    flashlight, candle, boat, mountain, mesa, bird,
   };
 })(window);
