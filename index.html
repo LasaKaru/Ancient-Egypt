@@ -44,8 +44,16 @@
 
   <!-- ===== Studio splash ===== -->
   <div id="splash" class="screen">
-    <div class="studio">Hela<b>O2</b> Studio</div>
-    <div class="presents">presents</div>
+    <div class="splash-inner">
+      <svg class="hela-logo" viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="232" class="hl-text">Hela</text>
+        <circle cx="600" cy="150" r="96" fill="#ffffff" stroke="#16244a" stroke-width="30"/>
+        <polyline points="522,150 560,150 574,150 586,124 598,150 610,150 622,150 632,96 648,206 660,150 678,150"
+          fill="none" stroke="#101a30" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>
+        <text x="700" y="250" class="hl-sub">2</text>
+      </svg>
+      <div class="presents">STUDIO &nbsp;·&nbsp; presents</div>
+    </div>
   </div>
 
   <!-- ===== Main menu ===== -->
@@ -127,6 +135,18 @@
       <div class="inv-grid" id="invCompanions"></div>
       <div class="panel-actions">
         <button class="mbtn" id="btnInvClose">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Victory ===== -->
+  <div id="victory" class="screen hidden">
+    <div class="victory-inner">
+      <div class="victory-title">TREASURE CLAIMED</div>
+      <div class="victory-sub">You have completed<br><b>Whispers of the Fresco</b></div>
+      <div class="victory-stats" id="victoryStats"></div>
+      <div class="menu-buttons">
+        <button class="mbtn" id="btnVictoryMenu">MAIN MENU</button>
       </div>
     </div>
   </div>

@@ -31,6 +31,7 @@
     btnContinue: $("btnContinue"), btnPlay: $("btnPlay"),
     inventory: $("inventory"), invScarabs: $("invScarabs"), invCompanions: $("invCompanions"),
     btnInvClose: $("btnInvClose"), scarabHud: $("scarabHud"), scarabCount: $("scarabCount"),
+    victory: $("victory"), victoryStats: $("victoryStats"), btnVictoryMenu: $("btnVictoryMenu"),
     // settings inputs
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
@@ -101,7 +102,8 @@
     companions: [],
     bossProps: [],
     boss: null,
-    objectives: { door: false, light: false, boss: false },
+    treasure: null,
+    objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
 
   // ============================================================
@@ -159,18 +161,23 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => dom.toast.classList.remove("show"), ms || 2200);
   }
-  const OBJ_TEXT = {
-    door: "Bring the Nile mural to life and open the sealed door",
-    light: "Restore Ra's light to the darkened temple",
-    boss: "Awaken and defeat the guardian Anubis",
-  };
   function renderObjectives() {
+    const got = world.scarabs.filter((s) => s.collected).length;
+    const total = world.scarabs.length;
+    const items = [
+      { done: state.objectives.door, text: "Open the sealed eastern door (Nile fresco)" },
+      { done: state.objectives.light, text: "Restore Ra's light (climb the painted pillar)" },
+      { done: state.objectives.barque, text: "Sail the Sacred Barque across the oasis" },
+      { done: got >= total, text: "Recover the Sacred Scarabs (" + got + "/" + total + ")" },
+      { done: state.objectives.boss, text: "Awaken and defeat the guardian Anubis" },
+    ];
+    if (state.objectives.boss) items.push({ done: state.objectives.treasure, text: "Claim the Pharaoh's treasure" });
     let activeSet = false;
     dom.objList.innerHTML = "";
-    ["door", "light", "boss"].forEach((k) => {
+    items.forEach((it) => {
       const li = document.createElement("li");
-      li.textContent = OBJ_TEXT[k];
-      if (state.objectives[k]) li.className = "done";
+      li.textContent = it.text;
+      if (it.done) li.className = "done";
       else if (!activeSet) { li.className = "active"; activeSet = true; }
       dom.objList.appendChild(li);
     });
@@ -368,7 +375,7 @@
       toast("Ra's light floods the temple!", 2400);
       peelOff(def, { cloth: "#2f8f7e", skin: "#d99b63", hair: "#2c1d0f" });
     } else if (def.id === "boat") {
-      // bonus puzzle — the barque has already sailed across via the live link
+      state.objectives.barque = true;
       toast("The sacred barque reaches the far shore!", 2600);
       peelOff(def, { cloth: "#efe6cf", skin: "#c8854f", hair: "#2c1d0f" });
     }
@@ -612,11 +619,45 @@
         state.bossProps = [];
         world.hemi.intensity = 0.8;
         state.boss = null; state.mode = "3d";
-        setInstr("You have cleansed the temple. Explore freely — the path beyond is open.");
-        setTimeout(() => toast("✦  TEMPLE CLEANSED  ✦", 3600), 1000);
+        spawnTreasure();
+        setInstr("The Pharaoh's treasure rises! Approach it to claim your prize.");
+        setTimeout(() => toast("✦  THE TREASURE RISES  ✦", 3600), 1000);
       }
     };
     anim();
+  }
+
+  // ============================================================
+  // TREASURE + VICTORY
+  // ============================================================
+  function spawnTreasure() {
+    if (state.treasure) return;
+    const x = 0, z = 5, ground = heightAt(x, z);
+    const t = LP.treasure(new B.Vector3(x, ground - 2.6, z));
+    state.treasure = t;
+    tweenPos(t.root, new B.Vector3(x, ground, z), 1.6);
+    Sound.success();
+  }
+  function checkTreasurePickup() {
+    const t = state.treasure;
+    if (!t || state.objectives.treasure) return;
+    const dx = camera.position.x - t.root.position.x, dz = camera.position.z - t.root.position.z;
+    if (dx * dx + dz * dz < 2.8 * 2.8) {
+      state.objectives.treasure = true;
+      renderObjectives(); saveGame();
+      showVictory();
+    }
+  }
+  function showVictory() {
+    Sound.success();
+    const got = world.scarabs.filter((s) => s.collected).length;
+    dom.victoryStats.innerHTML =
+      "Sacred Scarabs: " + got + " / " + world.scarabs.length + "<br>" +
+      "Companions awakened: " + state.companions.length + "<br>" +
+      "Sacred Barque: " + (state.objectives.barque ? "sailed" : "not sailed");
+    currentOverlay = "victory"; state.paused = true;
+    showScreen("victory");
+    document.exitPointerLock && document.exitPointerLock();
   }
 
   function updateBoss(dt) {
@@ -826,6 +867,7 @@
 
     groundCamera();
     checkScarabPickup();
+    checkTreasurePickup();
     if (state.mode === "boss") { updateBoss(dt); return; }
 
     // 3d: crosshair + contextual hint
@@ -900,6 +942,7 @@
         updateScarabHud();
         const got = world.scarabs.filter((x) => x.collected).length;
         toast("Sacred Scarab found!  (" + got + "/" + world.scarabs.length + ")", 1800);
+        renderObjectives();
         saveGame();
         if (currentOverlay === "inventory") buildInventory();
       }
@@ -938,7 +981,7 @@
     if (!state.started) return;
     const data = {
       v: 1,
-      obj: { door: !!state.objectives.door, light: !!state.objectives.light, boss: !!state.objectives.boss },
+      obj: { door: !!state.objectives.door, light: !!state.objectives.light, barque: !!state.objectives.barque, boss: !!state.objectives.boss, treasure: !!state.objectives.treasure },
       solved: { nile: !!(findDef("nile") || {}).solved, climb: !!(findDef("climb") || {}).solved, boat: !!(findDef("boat") || {}).solved },
       companions: state.companions.map((c) => c.colors || {}),
       scarabs: world.scarabs.filter((s) => s.collected).map((s) => s.id),
@@ -948,12 +991,13 @@
   }
   function applyLoad(d) {
     if (!d) return;
-    state.objectives = { door: !!d.obj.door, light: !!d.obj.light, boss: !!d.obj.boss };
+    state.objectives = { door: !!d.obj.door, light: !!d.obj.light, barque: !!d.obj.barque, boss: !!d.obj.boss, treasure: !!d.obj.treasure };
     ["nile", "climb", "boat"].forEach((id) => { const def = findDef(id); if (def && d.solved && d.solved[id]) def.solved = true; });
     if (state.objectives.door) { door.position.y = 6.2; door.checkCollisions = false; }
     if (state.objectives.light) { torches.forEach((t) => { t.light.intensity = 1.4; }); world.hemi.intensity = 0.8; }
     if (d.solved && d.solved.boat && world.boat3D) { world.boat3D.position.x = world.boatFar.x; world.boat3D.position.z = world.boatFar.z; }
     if (d.obj.boss) { const a = findDef("anubis"); if (a) a.mesh.material.emissiveColor = new B.Color3(0.3, 0.12, 0.04); }
+    if (d.obj.boss && !d.obj.treasure) spawnTreasure();
     (d.companions || []).forEach((col) => spawnCompanion(col));
     (d.scarabs || []).forEach((id) => { const s = world.scarabs.find((x) => x.id === id); if (s) { s.collected = true; s.root.setEnabled(false); } });
     if (d.cam) { camera.position = new B.Vector3(d.cam.p[0], d.cam.p[1], d.cam.p[2]); camera.rotation = new B.Vector3(d.cam.r[0], d.cam.r[1], d.cam.r[2]); }
@@ -964,7 +1008,7 @@
   // ============================================================
   // SCREEN / MENU FLOW
   // ============================================================
-  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory"];
+  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory"];
   function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
   let settingsReturn = "menu";
   let currentOverlay = null; // "pause" | "inventory" | null (in-game overlays)
@@ -1037,6 +1081,7 @@
   dom.btnPauseSettings.addEventListener("click", () => openSettings("pause"));
   dom.btnMainMenu.addEventListener("click", () => { saveGame(); sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
   dom.btnInvClose.addEventListener("click", closeOverlay);
+  dom.btnVictoryMenu.addEventListener("click", () => { sessionStorage.setItem("wotf_skipIntro", "1"); location.reload(); });
 
   // first user gesture anywhere enables audio (autoplay policy)
   window.addEventListener("pointerdown", () => Sound.init(), { once: true });

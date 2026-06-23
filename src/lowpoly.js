@@ -424,6 +424,24 @@
     return root;
   }
 
+  // ---------- pharaoh's treasure (golden sarcophagus) ----------
+  function treasure(pos) {
+    const root = new B.TransformNode("treasure", _scene);
+    root.position = pos.clone();
+    const gold = mat("#e8c054", "#9a6c00", 0.5), teal = mat("#1f8f7e", "#0c5a4e", 0.4), dark = mat("#2a2014");
+    const ped = box(2.0, 0.5, 1.4, mat("#b89a6a"), "tPed"); flat(ped); ped.parent = root; ped.position.y = 0.25;
+    const body = box(0.98, 1.6, 0.58, gold, "tBody"); flat(body); body.parent = root; body.position.y = 1.3;
+    const head = box(0.72, 0.62, 0.5, gold, "tHead"); flat(head); head.parent = root; head.position.y = 2.2;
+    const nemes = box(0.92, 0.4, 0.56, teal, "tNemes"); flat(nemes); nemes.parent = root; nemes.position.y = 2.48;
+    const lapL = box(0.18, 0.6, 0.1, teal, "tLapL"); flat(lapL); lapL.parent = root; lapL.position.set(-0.34, 1.95, 0.27);
+    const lapR = box(0.18, 0.6, 0.1, teal, "tLapR"); flat(lapR); lapR.parent = root; lapR.position.set(0.34, 1.95, 0.27);
+    const beard = box(0.13, 0.32, 0.13, dark, "tBeard"); flat(beard); beard.parent = root; beard.position.set(0, 1.92, 0.3);
+    const glow = new B.PointLight("treasureGlow", new B.Vector3(0, 2, 0), _scene);
+    glow.parent = root; glow.diffuse = new B.Color3(1, 0.8, 0.35); glow.intensity = 1.2; glow.range = 12;
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; });
+    return { root, glow };
+  }
+
   // ---------- collectible scarab ----------
   function scarab(pos) {
     const root = new B.TransformNode("scarab", _scene);
@@ -459,6 +477,6 @@
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
-    flashlight, candle, boat, mountain, mesa, bird, scarab,
+    flashlight, candle, boat, mountain, mesa, bird, scarab, treasure,
   };
 })(window);

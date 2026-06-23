@@ -77,7 +77,18 @@ Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
 4. Solved figures **peel off the wall** and become 3D companions that follow
    you.
 
-## Objectives (current build)
+## The adventure (objectives)
+
+1. **Open the sealed eastern door** — bring the *Nile* fresco to life.
+2. **Restore Ra's light** — climb the painted pillar to the sun-disk.
+3. **Sail the Sacred Barque** — slide the painted barque to sail a real boat
+   across the oasis.
+4. **Recover the 5 Sacred Scarabs** — hidden around the world.
+5. **Defeat the guardian Anubis** — the three-phase boss.
+6. **Claim the Pharaoh's treasure** — it rises once Anubis falls; reach it for
+   the **victory** screen with your completion stats.
+
+### Detail
 
 1. **Daily Life on the Nile** — walk the worker to the rope to raise the
    sealed eastern door (opening the way to the oasis). → worker peels off as an
