@@ -188,6 +188,49 @@
       LP.grassTuft(new B.Vector3(px, heightAt(px, pz), pz));
     }
 
+    // ---- god-ray light shafts slanting into the temple hall ----
+    const rayMat = new B.StandardMaterial("rayMat", scene);
+    rayMat.emissiveColor = B.Color3.FromHexString("#ffe1a0");
+    rayMat.diffuseColor = new B.Color3(0, 0, 0);
+    rayMat.disableLighting = true;
+    rayMat.backFaceCulling = false;
+    rayMat.alpha = 0.05;
+    rayMat.alphaMode = B.Engine.ALPHA_ADD;
+    rayMat.fogEnabled = false;
+    [[-5, -3], [2, 2], [5, 7]].forEach((p, i) => {
+      const shaft = B.MeshBuilder.CreateCylinder("ray" + i,
+        { height: 11, diameterTop: 0.5, diameterBottom: 3.0, tessellation: 8 }, scene);
+      shaft.material = rayMat;
+      shaft.position.set(p[0], 5.5, p[1]);
+      shaft.rotation.x = 0.32; shaft.rotation.z = -0.18;
+      shaft.isPickable = false;
+    });
+
+    // ---- floating dust motes ----
+    const dot = new B.DynamicTexture("dot", { width: 32, height: 32 }, scene, true);
+    const dctx = dot.getContext();
+    const grad = dctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grad.addColorStop(0, "rgba(255,240,210,1)");
+    grad.addColorStop(1, "rgba(255,240,210,0)");
+    dctx.fillStyle = grad; dctx.fillRect(0, 0, 32, 32); dot.update();
+    const dust = new B.ParticleSystem("dust", 350, scene);
+    dust.particleTexture = dot;
+    dust.emitter = new B.Vector3(0, 3, 0);
+    dust.minEmitBox = new B.Vector3(-9, -3, -11);
+    dust.maxEmitBox = new B.Vector3(9, 3, 11);
+    dust.color1 = new B.Color4(1, 0.92, 0.75, 0.5);
+    dust.color2 = new B.Color4(1, 0.85, 0.6, 0.3);
+    dust.colorDead = new B.Color4(1, 0.9, 0.7, 0);
+    dust.minSize = 0.02; dust.maxSize = 0.07;
+    dust.minLifeTime = 6; dust.maxLifeTime = 12;
+    dust.emitRate = 40;
+    dust.blendMode = B.ParticleSystem.BLENDMODE_ADD;
+    dust.gravity = new B.Vector3(0, -0.02, 0);
+    dust.direction1 = new B.Vector3(-0.1, 0.05, -0.1);
+    dust.direction2 = new B.Vector3(0.1, 0.1, 0.1);
+    dust.minEmitPower = 0.02; dust.maxEmitPower = 0.08;
+    dust.start();
+
     // ---- invisible world boundary ----
     const bound = B.MeshBuilder.CreateBox("bound", { width: 170, height: 30, depth: 170 }, scene);
     bound.checkCollisions = true; bound.flipFaces(true); bound.isVisible = false;

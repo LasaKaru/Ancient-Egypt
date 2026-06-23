@@ -23,6 +23,7 @@
     const m = new B.StandardMaterial("lp_" + key, _scene);
     m.diffuseColor = B.Color3.FromHexString(hex);
     m.specularColor = new B.Color3(0.02, 0.02, 0.02);
+    m.maxSimultaneousLights = 8;
     if (emissiveHex) m.emissiveColor = B.Color3.FromHexString(emissiveHex).scale(emissiveScale || 1);
     _matCache[key] = m;
     return m;
@@ -166,6 +167,7 @@
     m.specularColor = new B.Color3(0, 0, 0);
     m.backFaceCulling = false;
     m.disableLighting = true;
+    m.fogEnabled = false; // let the dusk gradient show through the fog
     dome.material = m;
     dome.infiniteDistance = true;
     dome.isPickable = false;
@@ -175,6 +177,7 @@
   function sun(pos) {
     const s = lowSphere(14, 1, "#fff2c0", "sun");
     s.material = mat("#fff2c0", "#ffe9a0", 1);
+    s.material.fogEnabled = false;
     s.position = pos.clone();
     s.infiniteDistance = true;
     s.isPickable = false;
@@ -201,10 +204,11 @@
     const m = B.MeshBuilder.CreateGround("water", { width: w, height: d, subdivisions: 14 }, _scene);
     m.position = pos.clone();
     const mt = new B.StandardMaterial("waterMat", _scene);
-    mt.diffuseColor = B.Color3.FromHexString("#2f8fbf");
-    mt.emissiveColor = B.Color3.FromHexString("#1d5f86");
-    mt.specularColor = new B.Color3(0.4, 0.5, 0.6);
-    mt.alpha = 0.82;
+    mt.diffuseColor = B.Color3.FromHexString("#2c7da0");
+    mt.emissiveColor = B.Color3.FromHexString("#123a52");
+    mt.specularColor = new B.Color3(0.3, 0.4, 0.5);
+    mt.alpha = 0.85;
+    mt.maxSimultaneousLights = 8;
     m.material = mt;
     m.isPickable = false;
     const base = m.getVerticesData(B.VertexBuffer.PositionKind);
@@ -245,6 +249,7 @@
     const m = new B.StandardMaterial("duneMat", _scene);
     m.diffuseColor = new B.Color3(1, 1, 1);
     m.specularColor = new B.Color3(0, 0, 0);
+    m.maxSimultaneousLights = 8;
     g.material = m;
     g.useVertexColors = true;
     g.isPickable = false;
@@ -291,9 +296,9 @@
   // ---------- low-poly guardian boss (Anubis) ----------
   function guardian() {
     const root = new B.TransformNode("guardian", _scene);
-    const black = mat("#1a1410");
+    const black = mat("#161020");
     const gold = mat("#d4a017", "#7a5c00", 0.4);
-    const eyeMat = mat("#ffae3b", "#ff8a1a", 1.4);
+    const eyeMat = mat("#c79bff", "#7a2dff", 1.6); // glowing violet eyes (per the video)
 
     function part(w, h, d, m, x, y, z) {
       const b = box(w, h, d, m, "gpart"); b.parent = root; b.position.set(x, y, z); return b;
@@ -327,7 +332,7 @@
     collider.metadata = { bossHit: true };
 
     const glow = new B.PointLight("guardGlow", new B.Vector3(0, 2.5, 0), _scene);
-    glow.diffuse = new B.Color3(1, 0.55, 0.15); glow.intensity = 1.8; glow.range = 16;
+    glow.diffuse = new B.Color3(0.6, 0.35, 1.0); glow.intensity = 1.8; glow.range = 16;
     glow.parent = root;
 
     let t = 0;
@@ -340,10 +345,44 @@
     return { root, collider, glow, update, eyeMat };
   }
 
+  // ---------- held flashlight viewmodel (first-person) ----------
+  function flashlight() {
+    const root = new B.TransformNode("flashlight", _scene);
+    const metal = mat("#3a3a40");
+    const grip = cyl(0.42, 0.07, 0.08, 8, metal, "flGrip"); grip.parent = root;
+    grip.rotation.x = Math.PI / 2; grip.position.set(0, -0.02, 0);
+    const headM = cyl(0.18, 0.13, 0.085, 8, mat("#5a5a62"), "flHead"); headM.parent = root;
+    headM.rotation.x = Math.PI / 2; headM.position.set(0, 0.02, 0.28);
+    const lens = cyl(0.04, 0.12, 0.12, 8, mat("#fff2c0", "#ffe9a0", 1), "flLens"); lens.parent = root;
+    lens.rotation.x = Math.PI / 2; lens.position.set(0, 0.02, 0.38);
+    // a gloved hand stub
+    const hand = box(0.16, 0.16, 0.2, mat("#caa46a"), "flHand"); flat(hand);
+    hand.parent = root; hand.position.set(0, -0.12, -0.05);
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; m.renderingGroupId = 1; });
+    return root;
+  }
+
+  // ---------- a single low-poly candle (flame; light optional) ----------
+  function candle(pos, h, withLight) {
+    h = h || 0.5;
+    const root = new B.TransformNode("candle", _scene);
+    root.position = pos.clone();
+    const stick = cyl(h, 0.07, 0.09, 6, mat("#e8dcc0"), "candleStick"); stick.parent = root; stick.position.y = h / 2;
+    const flame = lowSphere(0.16, 1, mat("#ffcf6a", "#ff9a2a", 1), "candleFlame");
+    flame.parent = root; flame.position.y = h + 0.1; flame.scaling.y = 1.6;
+    let light = null;
+    if (withLight) {
+      light = new B.PointLight("candleL", new B.Vector3(0, h + 0.15, 0), _scene);
+      light.parent = root; light.diffuse = new B.Color3(1, 0.7, 0.35); light.intensity = 0.35; light.range = 5;
+    }
+    return { root, flame, light, baseY: h + 0.1 };
+  }
+
   global.LP = {
     init(scene) { _scene = scene; },
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
+    flashlight, candle,
   };
 })(window);

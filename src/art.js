@@ -391,9 +391,60 @@
       drawAnubisScene(ctx, W, H * 0.5); // reuse, scaled-ish
     } else if (kind === "priest") {
       drawFigure(ctx, W * 0.5 - 80, 60, 160, 400, { tunic: PAL.white, arm: "up" });
+    } else if (kind === "climber") {
+      // facing the wall, both limbs reaching up to climb
+      drawFigure(ctx, W * 0.5 - 80, 60, 160, 400, { tunic: PAL.teal, arm: "up", stride: 0.7, skin: PAL.skinHi });
     } else {
       // worker (default red tunic, like the reference video)
       drawFigure(ctx, W * 0.5 - 80, 60, 160, 400, { tunic: PAL.red, arm: "fwd", stride: 0.6 });
+    }
+    tex.update();
+    return tex;
+  }
+
+  // Ragged "torn plaster" patch — a lighter cream blob with jagged edges and
+  // a transparent surround. This is the area a fresco figure "comes alive" in.
+  function tornPatchTexture(BABYLON, scene) {
+    const S = 512;
+    const tex = new BABYLON.DynamicTexture("tornPatch", { width: S, height: S }, scene, true);
+    tex.hasAlpha = true;
+    const ctx = tex.getContext();
+    ctx.clearRect(0, 0, S, S);
+    const cx = S / 2, cy = S / 2;
+    // main jagged blob
+    function blob(rx, ry, jitter, fill) {
+      ctx.beginPath();
+      const steps = 46;
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const r = 1 + (Math.sin(a * 7) * 0.06) + (Math.random() - 0.5) * jitter;
+        const x = cx + Math.cos(a) * rx * r;
+        const y = cy + Math.sin(a) * ry * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    // soft outer faded ring (worn edge)
+    blob(S * 0.42, S * 0.42, 0.14, "rgba(240,226,189,0.55)");
+    blob(S * 0.37, S * 0.37, 0.10, "#efe1bd"); // bright fresh plaster
+    // subtle inner cracks/mottle
+    ctx.strokeStyle = "rgba(120,95,55,0.18)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      let x = cx + (Math.random() - 0.5) * S * 0.4, y = cy + (Math.random() - 0.5) * S * 0.4;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let s = 0; s < 4; s++) { x += (Math.random() - 0.5) * 40; y += (Math.random() - 0.5) * 40; ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    // a few detached flecks around the edge (torn debris)
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2, r = S * (0.4 + Math.random() * 0.08);
+      ctx.fillStyle = "rgba(239,225,189,0.7)";
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 3 + Math.random() * 7, 0, Math.PI * 2);
+      ctx.fill();
     }
     tex.update();
     return tex;
@@ -417,5 +468,6 @@
     muralTexture,
     characterTexture,
     glyphPanelTexture,
+    tornPatchTexture,
   };
 })(window);
