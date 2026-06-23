@@ -1,16 +1,30 @@
 # Whispers of the Fresco — Ancient Egypt
 
-A browser-based **first/second-person puzzle-adventure** set in an Ancient
-Egyptian temple, inspired by *Fresco* (Kelonia Games). Its core mechanic lets
-you switch between **exploring the temple in 3D** and **controlling flat,
-painted figures that come alive inside the wall murals** to solve
-interconnected puzzles.
+A browser-based, **low-poly**, **first/second-person puzzle-adventure** set in
+Ancient Egypt, inspired by *Fresco* (Kelonia Games). Its core mechanic lets you
+switch between **exploring a 3D world** and **controlling flat, painted figures
+that come alive inside the wall murals** to solve interconnected puzzles.
+
+The whole game uses a single, cohesive **flat-shaded low-poly art style** — a
+bigger world built from several connected zones:
+
+- **Desert Gate** — the entrance plaza with obelisks, rock-sphinxes and a sand
+  path across rolling dunes.
+- **The Temple** — an open-air pillared hall holding the interactive murals,
+  puzzles and the boss arena.
+- **The Oasis** — a low-poly lake with palms, reeds and grass (unlocked by the
+  Nile puzzle).
+- **Pyramid Horizon** — pyramids and scattered cacti/rocks across the dunes.
+
+Everything (terrain, props, characters, the guardian) is generated from
+primitives + flat shading at runtime, so the world stays stylistically unified
+and carries **no binary assets**.
 
 Built with **[Babylon.js](https://www.babylonjs.com/)** — chosen over Three.js
-for this project because it ships first-person `FreeCamera`, trivial
-orthographic ⇄ perspective switching, ray picking, easy parenting of flat
-sprites onto rotated walls, and a built-in input/GUI system, which is exactly
-what the "2D-painting-inside-3D-world" mechanic needs.
+because it ships first-person `FreeCamera`, trivial orthographic ⇄ perspective
+switching, ray picking, easy parenting of flat sprites onto rotated walls, and a
+built-in input system, which is exactly what the "2D-painting-inside-3D-world"
+mechanic needs.
 
 ## Play
 
@@ -52,7 +66,8 @@ require to begin from a user gesture).
 ## Objectives (current build)
 
 1. **Daily Life on the Nile** — walk the worker to the rope to raise the
-   sealed door. → worker peels off as an ally.
+   sealed eastern door (opening the way to the oasis). → worker peels off as an
+   ally.
 2. **The Journey of Ra** — carry the sun-disk to the horizon to flood the dark
    temple with light. → priest peels off as an ally.
 3. **The Guardian of the Dead** — once the door is open and the light restored,
@@ -64,9 +79,11 @@ require to begin from a user gesture).
 ```
 index.html      # markup, CDN scripts, HUD elements
 styles.css      # all UI styling (HUD, overlay, touch controls, boss bar)
-src/art.js      # procedural Egyptian art (murals, figures, hieroglyphs) via canvas
+src/art.js      # procedural mural / painted-figure art (canvas) for the 2D layer
 src/audio.js    # procedural ambient + SFX via the Web Audio API (no asset files)
-src/temple.js   # temple geometry: walls, pillars, flickering torches
+src/lowpoly.js  # flat-shaded low-poly toolkit: palms, rocks, pyramids, dunes,
+                #   water, sky, clouds, low-poly characters + the guardian boss
+src/world.js    # builds the bigger world: terrain height-field + all zones + temple
 src/game.js     # game loop, 2D/3D switching, puzzles, peel-off, boss, input
 ```
 

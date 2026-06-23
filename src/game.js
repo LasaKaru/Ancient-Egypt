@@ -1,24 +1,20 @@
 /* ============================================================
    game.js — Whispers of the Fresco
-   First/second-person dual-perspective Egyptian puzzle-adventure.
-   Engine: Babylon.js (chosen for FreeCamera FPS, ortho switching,
-   ray picking, parenting to rotated walls, GUI, and easy 2D-in-3D).
+   Low-poly, first/second-person dual-perspective Egyptian
+   puzzle-adventure across a bigger multi-zone world.
+   Engine: Babylon.js.
 
-   Depends on: art.js, audio.js, temple.js  (loaded before this file)
+   Depends on: art.js, audio.js, lowpoly.js, world.js
    ============================================================ */
 (function () {
   "use strict";
 
   const B = BABYLON;
+  const EYE = 1.7;
   const canvas = document.getElementById("renderCanvas");
   const engine = new B.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
   const scene = new B.Scene(engine);
   scene.collisionsEnabled = true;
-  scene.gravity = new B.Vector3(0, -0.4, 0);
-  scene.clearColor = B.Color3.FromHexString("#1a1208");
-  scene.fogMode = B.Scene.FOGMODE_EXP2;
-  scene.fogColor = B.Color3.FromHexString("#3a2a14");
-  scene.fogDensity = 0.018;
 
   // ---------- DOM ----------
   const dom = {
@@ -35,124 +31,74 @@
     tcRight: document.getElementById("tcRight"),
     tcAction: document.getElementById("tcAction"),
   };
-
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
-  // ============================================================
-  // CAMERA — first-person FreeCamera
-  // ============================================================
-  const camera = new B.FreeCamera("player", new B.Vector3(0, 1.7, -9), scene);
+  // ---------- WORLD ----------
+  const world = World.build(scene);
+  const { walls, torches, ROOM, heightAt } = world;
+
+  // ---------- CAMERA (first-person) ----------
+  const camera = new B.FreeCamera("player", world.spawn.clone(), scene);
   camera.attachControl(canvas, true);
-  camera.speed = 0.28;
+  camera.speed = 0.42;
   camera.angularSensibility = 2800;
   camera.minZ = 0.05;
+  camera.maxZ = 700;
   camera.checkCollisions = true;
   camera.applyGravity = false;
   camera.ellipsoid = new B.Vector3(0.5, 0.85, 0.5);
-  camera.keysUp = [87, 38];    // W / Up
-  camera.keysDown = [83, 40];  // S / Down
-  camera.keysLeft = [65, 37];  // A / Left
-  camera.keysRight = [68, 39]; // D / Right
+  camera.keysUp = [87, 38];
+  camera.keysDown = [83, 40];
+  camera.keysLeft = [65, 37];
+  camera.keysRight = [68, 39];
+  camera.setTarget(new B.Vector3(0, EYE, 0));
 
-  // ============================================================
-  // LIGHTING
-  // ============================================================
-  const hemi = new B.HemisphericLight("hemi", new B.Vector3(0, 1, 0), scene);
-  hemi.intensity = 0.45;
-  hemi.groundColor = new B.Color3(0.25, 0.18, 0.1);
-  hemi.diffuse = new B.Color3(0.9, 0.8, 0.62);
-
-  // ============================================================
-  // TEMPLE
-  // ============================================================
-  const temple = Temple.build(scene, B);
-  const { walls, torches, ROOM } = temple;
-
-  // Sealed door (blocks the passage in the back-right corner)
-  const door = B.MeshBuilder.CreateBox("door", { width: 2.4, height: 4, depth: 0.5 }, scene);
-  door.position = new B.Vector3(5.5, 2, ROOM.d / 2 - 0.4);
-  const doorMat = new B.StandardMaterial("doorMat", scene);
-  doorMat.diffuseTexture = Art.glyphPanelTexture(B, scene, "door");
-  doorMat.specularColor = new B.Color3(0.05, 0.05, 0.05);
-  door.material = doorMat;
+  // ---------- sealed door (low-poly) — fills the eastern doorway to the oasis ----------
+  const door = LP.box(0.6, 4, 6, LP.mat("#b89a5e"), "door");
+  LP.flat(door);
+  door.position.set(ROOM.w / 2, 2, 0);
   door.checkCollisions = true;
 
   // ============================================================
-  // GUI (Babylon fullscreen UI for the in-world "press E" prompt halo)
-  // ============================================================
-  // We use DOM for most UI; keep a light Babylon layer for crispness if needed.
-
-  // ============================================================
-  // GAME STATE
+  // STATE
   // ============================================================
   const state = {
     started: false,
-    mode: "3d",            // "3d" | "2d" | "boss"
+    mode: "3d",
     currentMural: null,
     paintedChar: null,
     savedCam: null,
     move2D: { left: false, right: false },
     companions: [],
     boss: null,
-    objectives: {
-      door: false,
-      light: false,
-      boss: false,
-    },
+    objectives: { door: false, light: false, boss: false },
   };
 
   // ============================================================
-  // PAINTING / PUZZLE DEFINITIONS
+  // MURALS / PUZZLES  (parented to temple walls)
   // ============================================================
-  // Each mural is a plane parented to a wall; local +X runs horizontally.
   const muralDefs = [
-    {
-      id: "nile",
-      title: "Daily Life on the Nile",
-      scene: "nile",
-      char: "worker",
-      wall: walls.backWall,
-      local: new B.Vector3(-3.5, 0.2, 0.03),
-      size: { w: 6, h: 3.2 },
-      puzzle: "reachRight",
-      hint: "Walk the worker to the far right to haul the rope that lifts the door.",
-    },
-    {
-      id: "sun",
-      title: "The Journey of Ra",
-      scene: "sun",
-      char: "priest",
-      wall: walls.backWall,
-      local: new B.Vector3(3.5, 0.2, 0.03),
-      size: { w: 6, h: 3.2 },
-      puzzle: "reachRight",
-      hint: "Carry the sun-disk to the eastern horizon to flood the temple with light.",
-    },
-    {
-      id: "anubis",
-      title: "The Guardian of the Dead",
-      scene: "anubis",
-      char: "anubis",
-      wall: walls.leftWall,
-      local: new B.Vector3(0, 0.4, 0.03),
-      size: { w: 5, h: 3.6 },
-      puzzle: "boss",
-      gated: true, // requires door + light first
-      hint: "The guardian stirs. Press E to face Anubis.",
-    },
+    { id: "nile", title: "Daily Life on the Nile", scene: "nile", char: "worker",
+      wall: walls.backWall, local: new B.Vector3(-3.5, 0.2, 0.03), size: { w: 6, h: 3.2 },
+      puzzle: "reachRight", hint: "Walk the worker to the far side to haul the rope that lifts the eastern door to the oasis." },
+    { id: "sun", title: "The Journey of Ra", scene: "sun", char: "priest",
+      wall: walls.backWall, local: new B.Vector3(3.5, 0.2, 0.03), size: { w: 6, h: 3.2 },
+      puzzle: "reachRight", hint: "Carry the sun-disk to the horizon to flood the temple with light." },
+    { id: "anubis", title: "The Guardian of the Dead", scene: "anubis", char: "anubis",
+      wall: walls.leftWall, local: new B.Vector3(0, 0.4, 0.03), size: { w: 5, h: 3.6 },
+      puzzle: "boss", gated: true, hint: "The guardian stirs. Press E to face Anubis." },
   ];
 
   const murals = [];
   muralDefs.forEach((def) => {
-    const m = B.MeshBuilder.CreatePlane("mural_" + def.id, {
-      width: def.size.w, height: def.size.h, sideOrientation: B.Mesh.DOUBLESIDE,
-    }, scene);
+    const m = B.MeshBuilder.CreatePlane("mural_" + def.id,
+      { width: def.size.w, height: def.size.h, sideOrientation: B.Mesh.DOUBLESIDE }, scene);
     m.parent = def.wall;
     m.position = def.local.clone();
     const mat = new B.StandardMaterial("muralMat_" + def.id, scene);
     mat.diffuseTexture = Art.muralTexture(B, scene, def);
-    mat.specularColor = new B.Color3(0.12, 0.12, 0.12);
-    mat.emissiveColor = new B.Color3(0.08, 0.06, 0.03);
+    mat.specularColor = new B.Color3(0.1, 0.1, 0.1);
+    mat.emissiveColor = new B.Color3(0.12, 0.1, 0.06);
     m.material = mat;
     m.metadata = { interactive: true, def };
     def.mesh = m;
@@ -163,25 +109,21 @@
   // HUD HELPERS
   // ============================================================
   function setInstr(t) { dom.instructions.textContent = t; }
-
   let toastTimer = null;
   function toast(t, ms) {
-    dom.toast.textContent = t;
-    dom.toast.classList.add("show");
+    dom.toast.textContent = t; dom.toast.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => dom.toast.classList.remove("show"), ms || 2200);
   }
-
   const OBJ_TEXT = {
     door: "Bring the Nile mural to life and open the sealed door",
     light: "Restore Ra's light to the darkened temple",
     boss: "Awaken and defeat the guardian Anubis",
   };
   function renderObjectives() {
-    const order = ["door", "light", "boss"];
     let activeSet = false;
     dom.objList.innerHTML = "";
-    order.forEach((k) => {
+    ["door", "light", "boss"].forEach((k) => {
       const li = document.createElement("li");
       li.textContent = OBJ_TEXT[k];
       if (state.objectives[k]) li.className = "done";
@@ -189,27 +131,32 @@
       dom.objList.appendChild(li);
     });
   }
+  function defaultInstr() {
+    return isTouch ? "Drag to look • ◀ ▶ move • ⚔ interact"
+                   : "Click to lock mouse • WASD to move • look at a mural and press E";
+  }
 
   // ============================================================
-  // GENERIC TWEEN
+  // TWEENS
   // ============================================================
   const tweens = [];
-  function tweenPos(mesh, target, dur, onDone) {
-    tweens.push({ mesh, from: mesh.position.clone(), to: target.clone(), t: 0, dur, onDone });
+  function tweenPos(node, target, dur, onDone) {
+    tweens.push({ node, from: node.position.clone(), to: target.clone(), t: 0, dur, onDone });
   }
   function updateTweens(dt) {
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i];
       tw.t += dt;
       const k = Math.min(1, tw.t / tw.dur);
-      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // easeInOutQuad
-      tw.mesh.position = B.Vector3.Lerp(tw.from, tw.to, e);
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      tw.node.position = B.Vector3.Lerp(tw.from, tw.to, e);
       if (k >= 1) { tweens.splice(i, 1); if (tw.onDone) tw.onDone(); }
     }
   }
+  const tweening = (node) => tweens.some((tw) => tw.node === node);
 
   // ============================================================
-  // ENTER / EXIT 2D PAINTING MODE
+  // 2D PAINTING MODE
   // ============================================================
   function canActivate(def) {
     if (def.gated) return state.objectives.door && state.objectives.light;
@@ -219,74 +166,52 @@
   function enter2DMode(mural) {
     const def = mural.metadata.def;
     if (state.mode !== "3d") return;
-
     if (def.puzzle === "boss") {
-      if (!canActivate(def)) {
-        toast("The guardian sleeps…", 1800);
-        setInstr("Restore the light and open the door before the guardian will wake.");
-        return;
-      }
-      startBossFight(def);
-      return;
+      if (!canActivate(def)) { toast("The guardian sleeps…", 1800);
+        setInstr("Restore the light and open the door before the guardian will wake."); return; }
+      startBossFight(def); return;
     }
 
     Sound.whoosh();
     state.mode = "2d";
     state.currentMural = mural;
     document.exitPointerLock && document.exitPointerLock();
-
-    state.savedCam = {
-      position: camera.position.clone(),
-      rotation: camera.rotation.clone(),
-      mode: camera.mode,
-    };
+    state.savedCam = { position: camera.position.clone(), rotation: camera.rotation.clone(), mode: camera.mode };
     camera.detachControl();
     camera.mode = B.Camera.ORTHOGRAPHIC_CAMERA;
 
-    // Place ortho camera squarely in front of the mural, on the room side.
     const wpos = mural.getAbsolutePosition();
-    const toCenter = new B.Vector3(0, wpos.y, 0).subtract(wpos);
-    toCenter.y = 0;
+    const toCenter = world.center.clone(); toCenter.y = wpos.y;
+    toCenter.subtractInPlace(wpos); toCenter.y = 0;
     if (toCenter.lengthSquared() < 0.001) toCenter.set(0, 0, -1);
     toCenter.normalize();
     camera.position = wpos.add(toCenter.scale(4));
     camera.setTarget(wpos);
+    const half = def.size.h * 0.62, aspect = engine.getAspectRatio(camera);
+    camera.orthoTop = half; camera.orthoBottom = -half;
+    camera.orthoLeft = -half * aspect; camera.orthoRight = half * aspect;
 
-    const half = def.size.h * 0.62;
-    const aspect = engine.getAspectRatio(camera);
-    camera.orthoTop = half;
-    camera.orthoBottom = -half;
-    camera.orthoLeft = -half * aspect;
-    camera.orthoRight = half * aspect;
-
-    // Spawn the living painted figure (parented to the wall, flat on surface).
     if (state.paintedChar) state.paintedChar.dispose();
-    const ch = B.MeshBuilder.CreatePlane("paintedChar", { width: def.size.h * 0.32, height: def.size.h * 0.6 }, scene);
+    const ch = B.MeshBuilder.CreatePlane("paintedChar",
+      { width: def.size.h * 0.32, height: def.size.h * 0.6 }, scene);
     ch.parent = mural.parent;
-    const startLocal = mural.position.clone();
-    startLocal.x -= def.size.w * 0.32;
-    startLocal.y -= def.size.h * 0.16;
-    startLocal.z += 0.05;
-    ch.position = startLocal;
+    const start = mural.position.clone();
+    start.x -= def.size.w * 0.32; start.y -= def.size.h * 0.16; start.z += 0.05;
+    ch.position = start;
     const cmat = new B.StandardMaterial("pcMat", scene);
     cmat.diffuseTexture = Art.characterTexture(B, scene, def.char);
     cmat.diffuseTexture.hasAlpha = true;
     cmat.useAlphaFromDiffuseTexture = true;
     cmat.specularColor = new B.Color3(0, 0, 0);
-    cmat.emissiveColor = new B.Color3(0.35, 0.3, 0.2);
+    cmat.emissiveColor = new B.Color3(0.4, 0.34, 0.22);
     cmat.backFaceCulling = false;
     ch.material = cmat;
-    ch.metadata = {
-      minX: mural.position.x - def.size.w * 0.4,
-      maxX: mural.position.x + def.size.w * 0.4,
-      baseY: startLocal.y,
-      phase: 0,
-    };
+    ch.metadata = { minX: mural.position.x - def.size.w * 0.4, maxX: mural.position.x + def.size.w * 0.4,
+                    baseY: start.y, phase: 0 };
     state.paintedChar = ch;
 
-    setInstr(isTouch
-      ? "◀ ▶ move the figure   •   ✕ exits the painting"
-      : "← → (or A/D) move the painted figure   •   E exits the painting");
+    setInstr(isTouch ? "◀ ▶ move the figure   •   ✕ exits the painting"
+                     : "← → (or A/D) move the painted figure   •   E exits");
     toast(def.hint, 2600);
     showTouch(true);
   }
@@ -306,122 +231,96 @@
     setInstr(defaultInstr());
   }
 
-  // ============================================================
-  // 2D MOVEMENT + PUZZLE SOLVE
-  // ============================================================
-  let stepCooldown = 0;
+  let stepCd = 0;
   function update2D(dt) {
-    const ch = state.paintedChar;
-    if (!ch) return;
-    const meta = ch.metadata;
-    const speed = 1.6 * dt;
+    const ch = state.paintedChar; if (!ch) return;
+    const meta = ch.metadata, speed = 1.6 * dt;
     let moved = false;
     if (state.move2D.left) { ch.position.x = Math.max(meta.minX, ch.position.x - speed); moved = true; }
     if (state.move2D.right) { ch.position.x = Math.min(meta.maxX, ch.position.x + speed); moved = true; }
-
-    // walking bob + step sfx
     if (moved) {
       meta.phase += dt * 10;
       ch.position.y = meta.baseY + Math.abs(Math.sin(meta.phase)) * 0.05;
-      stepCooldown -= dt;
-      if (stepCooldown <= 0) { Sound.step(); stepCooldown = 0.28; }
+      stepCd -= dt; if (stepCd <= 0) { Sound.step(); stepCd = 0.28; }
     }
-
-    // Puzzle: reach the far right edge
     const def = state.currentMural.metadata.def;
-    if (def.puzzle === "reachRight" && ch.position.x > meta.maxX - 0.05 && !def.solved) {
-      solvePuzzle(def);
-    }
+    if (def.puzzle === "reachRight" && ch.position.x > meta.maxX - 0.05 && !def.solved) solvePuzzle(def);
   }
 
   function solvePuzzle(def) {
-    def.solved = true;
-    Sound.success();
-
+    def.solved = true; Sound.success();
     if (def.id === "nile") {
-      // open the sealed door
       tweenPos(door, door.position.add(new B.Vector3(0, 4.2, 0)), 1.6, () => { door.checkCollisions = false; });
       Sound.stoneSlide();
       state.objectives.door = true;
-      toast("The sealed door grinds open!", 2400);
-      peelOff(def, "worker"); // worker steps out as a 3D ally
+      toast("The eastern door grinds open — the oasis awaits!", 2600);
+      peelOff(def, { cloth: "#bb3b22", skin: "#c8854f" });
     } else if (def.id === "sun") {
       lightTemple();
       state.objectives.light = true;
       toast("Ra's light floods the temple!", 2400);
-      peelOff(def, "priest");
+      peelOff(def, { cloth: "#efe6cf", skin: "#c8854f", hair: "#2c1d0f" });
     }
     renderObjectives();
-    setTimeout(() => {
-      setInstr("The painting is complete. Press " + (isTouch ? "✕" : "E") + " to return to the temple.");
-    }, 600);
-
-    if (state.objectives.door && state.objectives.light) {
+    setTimeout(() => setInstr("Press " + (isTouch ? "✕" : "E") + " to return to the temple."), 600);
+    if (state.objectives.door && state.objectives.light)
       setTimeout(() => toast("A growl echoes from the left wall…", 2600), 2600);
-    }
   }
 
   function lightTemple() {
     Sound.lightUp();
-    hemi.intensity = 0.45;
-    const target = 1.0;
-    torches.forEach((tc) => {
-      // ramp torch intensity over ~1.5s
-      const start = tc.light.intensity;
-      const startT = performance.now();
-      const step = () => {
-        const k = Math.min(1, (performance.now() - startT) / 1500);
-        tc.light.intensity = start + (1.4 - start) * k;
-        hemi.intensity = 0.45 + 0.35 * k;
-        if (k < 1) requestAnimationFrame(step);
-      };
-      step();
-    });
-    scene.fogDensity = 0.01;
+    const startT = performance.now();
+    const step = () => {
+      const k = Math.min(1, (performance.now() - startT) / 1500);
+      torches.forEach((tc) => { tc.light.intensity = 0.2 + 1.2 * k; });
+      world.hemi.intensity = 0.55 + 0.25 * k;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step();
   }
 
   // ============================================================
-  // PEEL-OFF — painted figure detaches and becomes a 3D follower
+  // PEEL-OFF — painted figure becomes a low-poly 3D companion
   // ============================================================
-  function peelOff(def, kind) {
-    // a billboarded plane that walks out of the wall and follows the player
-    const ally = B.MeshBuilder.CreatePlane("ally_" + kind, { width: 0.9, height: 1.8 }, scene);
-    ally.billboardMode = B.Mesh.BILLBOARDMODE_Y;
+  function peelOff(def, colors) {
+    const api = LP.humanoid(colors);
     const wpos = (state.paintedChar ? state.paintedChar.getAbsolutePosition() : def.mesh.getAbsolutePosition()).clone();
-    ally.position = wpos.clone();
-    const mat = new B.StandardMaterial("allyMat_" + kind, scene);
-    mat.diffuseTexture = Art.characterTexture(B, scene, kind);
-    mat.diffuseTexture.hasAlpha = true;
-    mat.useAlphaFromDiffuseTexture = true;
-    mat.specularColor = new B.Color3(0, 0, 0);
-    mat.emissiveColor = new B.Color3(0.25, 0.2, 0.12);
-    mat.backFaceCulling = false;
-    ally.material = mat;
-
-    // step out toward room interior
-    const out = new B.Vector3(0, 0.9, 0).subtract(new B.Vector3(wpos.x, 0, wpos.z));
-    out.y = 0; out.normalize();
-    const landing = new B.Vector3(wpos.x, 0.9, wpos.z).add(out.scale(2));
-    tweenPos(ally, landing, 1.2);
-
-    state.companions.push({ mesh: ally, offset: 1.8 + state.companions.length * 0.7, bob: Math.random() * 6 });
+    api.root.position = new B.Vector3(wpos.x, heightAt(wpos.x, wpos.z), wpos.z);
+    // step out toward the room interior
+    const out = world.center.subtract(new B.Vector3(wpos.x, 0, wpos.z)); out.y = 0;
+    if (out.lengthSquared() < 0.01) out.set(0, 0, -1);
+    out.normalize();
+    const land = new B.Vector3(wpos.x, 0, wpos.z).add(out.scale(2.4));
+    land.y = heightAt(land.x, land.z);
+    tweenPos(api.root, land, 1.2);
+    state.companions.push({ api, offset: 2.2 + state.companions.length * 0.8, bob: Math.random() * 6 });
   }
 
   function updateCompanions(dt) {
-    const t = performance.now() * 0.003;
     state.companions.forEach((c, i) => {
-      if (tweens.some((tw) => tw.mesh === c.mesh)) return; // still emerging
-      // desired spot: behind+beside the player on the floor
+      const root = c.api.root;
+      if (tweening(root)) { c.api.update(dt, true); root.position.y = heightAt(root.position.x, root.position.z); return; }
       const back = camera.getDirection(B.Axis.Z).scale(-c.offset);
-      const side = camera.getDirection(B.Axis.X).scale((i % 2 ? 1 : -1) * 0.9);
+      const side = camera.getDirection(B.Axis.X).scale((i % 2 ? 1 : -1) * 1.0);
       const want = camera.position.add(back).add(side);
-      want.y = 0.9 + Math.sin(t + c.bob) * 0.05;
-      c.mesh.position = B.Vector3.Lerp(c.mesh.position, want, Math.min(1, dt * 2));
+      want.y = 0;
+      const before = root.position.clone();
+      const flat2 = root.position.clone(); flat2.y = 0;
+      const next = B.Vector3.Lerp(flat2, want, Math.min(1, dt * 2));
+      next.y = heightAt(next.x, next.z);
+      root.position = next;
+      const moving = B.Vector3.Distance(before, root.position) > 0.01;
+      // face travel direction
+      if (moving) {
+        const dir = want.subtract(flat2);
+        if (dir.lengthSquared() > 0.001) root.rotation.y = Math.atan2(dir.x, dir.z);
+      }
+      c.api.update(dt, moving);
     });
   }
 
   // ============================================================
-  // BOSS FIGHT — the guardian Anubis
+  // BOSS — low-poly guardian Anubis
   // ============================================================
   function startBossFight(def) {
     if (state.boss) return;
@@ -430,118 +329,74 @@
     toast("THE GUARDIAN AWAKENS", 2600);
     def.mesh.material.emissiveColor = new B.Color3(0.5, 0.2, 0.05);
 
-    const boss = B.MeshBuilder.CreatePlane("boss", { width: 3.0, height: 4.5 }, scene);
-    boss.billboardMode = B.Mesh.BILLBOARDMODE_Y;
-    boss.position = new B.Vector3(0, 2.3, 5.5);
-    const mat = new B.StandardMaterial("bossMat", scene);
-    mat.diffuseTexture = Art.characterTexture(B, scene, "anubis");
-    mat.diffuseTexture.hasAlpha = true;
-    mat.useAlphaFromDiffuseTexture = true;
-    mat.specularColor = new B.Color3(0, 0, 0);
-    mat.emissiveColor = new B.Color3(0.8, 0.4, 0.1);
-    mat.backFaceCulling = false;
-    boss.material = mat;
-
-    const glow = new B.PointLight("bossGlow", boss.position.clone(), scene);
-    glow.diffuse = new B.Color3(1, 0.5, 0.1);
-    glow.intensity = 1.6; glow.range = 14;
-
-    state.boss = {
-      mesh: boss, mat, glow, def,
-      hp: 8, maxHp: 8,
-      hitCd: 0, attackCd: 3, t: 0,
-    };
+    const g = LP.guardian();
+    g.root.position.set(0, heightAt(0, 5), 5);
+    state.boss = { g, hp: 10, maxHp: 10, hitCd: 0, attackCd: 3.5, t: 0 };
 
     dom.bossBar.style.display = "block";
     updateBossBar();
-    setInstr(isTouch
-      ? "Tap ⚔ to strike the guardian while it is in view!"
-      : "Click (or SPACE) to strike the guardian with Ra's light!");
-    // pointer lock for aiming on desktop
+    setInstr(isTouch ? "Tap ⚔ to strike the guardian while it is in view!"
+                     : "Click (or SPACE) to strike the guardian with Ra's light!");
     if (!isTouch && document.pointerLockElement !== canvas) canvas.requestPointerLock();
   }
 
   function updateBossBar() {
-    const b = state.boss;
-    dom.bossFill.style.width = Math.max(0, (b.hp / b.maxHp) * 100) + "%";
+    dom.bossFill.style.width = Math.max(0, (state.boss.hp / state.boss.maxHp) * 100) + "%";
   }
 
   function hitBoss() {
-    const b = state.boss;
-    if (!b || b.hitCd > 0 || b.hp <= 0) return;
-    // must be roughly looking at the boss and within range
-    const ray = camera.getForwardRay(20);
-    const pick = scene.pickWithRay(ray, (m) => m === b.mesh);
-    const dist = B.Vector3.Distance(camera.position, b.mesh.position);
-    if (!pick.hit || dist > 14) {
-      setInstr("Face the guardian to strike it!");
-      return;
-    }
-    b.hp -= 1;
-    b.hitCd = 0.35;
-    Sound.hit();
-    updateBossBar();
-    // flash
-    b.mat.emissiveColor = new B.Color3(1, 1, 0.8);
-    setTimeout(() => { if (state.boss) b.mat.emissiveColor = new B.Color3(0.8, 0.4, 0.1); }, 90);
+    const b = state.boss; if (!b || b.hitCd > 0 || b.hp <= 0) return;
+    const ray = camera.getForwardRay(24);
+    const pick = scene.pickWithRay(ray, (m) => m.metadata && m.metadata.bossHit);
+    const dist = B.Vector3.Distance(camera.position, b.g.root.position);
+    if (!pick.hit || dist > 16) { setInstr("Face the guardian to strike it!"); return; }
+    b.hp -= 1; b.hitCd = 0.32; Sound.hit(); updateBossBar();
+    b.g.eyeMat.emissiveColor = new B.Color3(1, 1, 0.8);
+    setTimeout(() => { if (state.boss) b.g.eyeMat.emissiveColor = B.Color3.FromHexString("#ff8a1a").scale(1.4); }, 90);
     if (b.hp <= 0) defeatBoss();
   }
 
   function defeatBoss() {
-    const b = state.boss;
-    Sound.bossDown();
-    state.objectives.boss = true;
-    renderObjectives();
+    const b = state.boss; Sound.bossDown();
+    state.objectives.boss = true; renderObjectives();
     toast("THE GUARDIAN IS VANQUISHED", 3200);
     dom.bossBar.style.display = "none";
-
-    // dissolve: shrink + fade glow
     const startT = performance.now();
     const anim = () => {
       const k = Math.min(1, (performance.now() - startT) / 1400);
-      b.mesh.scaling.setAll(1 - k);
-      b.glow.intensity = 1.6 * (1 - k);
-      b.mat.emissiveColor = new B.Color3(0.8 * (1 - k) + k, 0.4, 0.1);
+      b.g.root.scaling.setAll(1 - k);
+      b.g.glow.intensity = 1.8 * (1 - k);
       if (k < 1) requestAnimationFrame(anim);
       else {
-        b.mesh.dispose(); b.glow.dispose();
-        state.boss = null;
-        state.mode = "3d";
-        setInstr("You have cleansed the temple. Explore freely — the path beyond the door is open.");
-        setTimeout(() => toast("✦  TEMPLE CLEANSED  ✦", 3600), 1200);
+        b.g.root.dispose();
+        state.boss = null; state.mode = "3d";
+        setInstr("You have cleansed the temple. Explore freely — the path beyond is open.");
+        setTimeout(() => toast("✦  TEMPLE CLEANSED  ✦", 3600), 1000);
       }
     };
     anim();
   }
 
   function updateBoss(dt) {
-    const b = state.boss;
-    if (!b) return;
-    b.t += dt;
-    b.hitCd = Math.max(0, b.hitCd - dt);
-    // bob + drift toward player horizontally
-    b.mesh.position.y = 2.3 + Math.sin(b.t * 2) * 0.15;
-    const toP = camera.position.subtract(b.mesh.position); toP.y = 0;
+    const b = state.boss; if (!b) return;
+    b.t += dt; b.hitCd = Math.max(0, b.hitCd - dt);
+    b.g.update(dt);
+    const ground = heightAt(b.g.root.position.x, b.g.root.position.z);
+    b.g.root.position.y = ground + Math.sin(b.t * 2) * 0.15;
+    const toP = camera.position.subtract(b.g.root.position); toP.y = 0;
     const d = toP.length();
-    if (d > 5) {
-      toP.normalize();
-      b.mesh.position.addInPlace(toP.scale(dt * 0.6));
-    }
-    b.glow.position.copyFrom(b.mesh.position);
-    b.glow.intensity = 1.4 + Math.sin(b.t * 6) * 0.3;
-
-    // telegraphed roar (cosmetic pressure)
+    if (d > 5) { toP.normalize(); b.g.root.position.addInPlace(toP.scale(dt * 0.8));
+      b.g.root.rotation.y = Math.atan2(toP.x, toP.z); }
     b.attackCd -= dt;
     if (b.attackCd <= 0) {
-      b.attackCd = 4 + Math.random() * 2;
-      Sound.bossRoar();
-      scene.fogColor = B.Color3.FromHexString("#5a1f0a");
-      setTimeout(() => { scene.fogColor = B.Color3.FromHexString("#3a2a14"); }, 500);
+      b.attackCd = 4 + Math.random() * 2; Sound.bossRoar();
+      scene.fogColor = B.Color3.FromHexString("#7a2a12");
+      setTimeout(() => { scene.fogColor = B.Color3.FromHexString("#caa07a"); }, 500);
     }
   }
 
   // ============================================================
-  // INTERACTION RAY (3D) + CROSSHAIR FEEDBACK
+  // INTERACTION + INPUT
   // ============================================================
   function lookedAtInteractive() {
     const ray = camera.getForwardRay(7);
@@ -549,49 +404,26 @@
     return pick.hit ? pick.pickedMesh : null;
   }
 
-  function defaultInstr() {
-    return isTouch
-      ? "Drag to look • ◀ ▶ move • ⚔ interact with murals"
-      : "Click to lock mouse • WASD to move • look at a mural and press E";
-  }
-
-  // ============================================================
-  // INPUT
-  // ============================================================
-  // Keyboard
   scene.onKeyboardObservable.add((kb) => {
     const down = kb.type === B.KeyboardEventTypes.KEYDOWN;
     const key = kb.event.key.toLowerCase();
-
     if (state.mode === "2d") {
       if (key === "arrowleft" || key === "a") state.move2D.left = down;
       if (key === "arrowright" || key === "d") state.move2D.right = down;
       if (down && key === "e") exit2DMode();
       return;
     }
-
     if (!down) return;
-    if (state.mode === "boss") {
-      if (key === " " || key === "spacebar") hitBoss();
-      return;
-    }
-    // 3d
-    if (key === "e") {
-      const m = lookedAtInteractive();
-      if (m) enter2DMode(m);
-    }
+    if (state.mode === "boss") { if (key === " " || key === "spacebar") hitBoss(); return; }
+    if (key === "e") { const m = lookedAtInteractive(); if (m) enter2DMode(m); }
   });
 
-  // Mouse: click to lock; in boss mode, click = strike
   scene.onPointerObservable.add((pi) => {
     if (pi.type !== B.PointerEventTypes.POINTERDOWN) return;
     if (state.mode === "boss") { hitBoss(); return; }
-    if (state.mode === "3d" && document.pointerLockElement !== canvas) {
-      canvas.requestPointerLock();
-    }
+    if (state.mode === "3d" && document.pointerLockElement !== canvas) canvas.requestPointerLock();
   });
 
-  // Touch controls
   function showTouch(show) {
     if (!isTouch) { dom.touch.classList.remove("show"); return; }
     dom.touch.classList.toggle("show", show);
@@ -614,36 +446,34 @@
   // ============================================================
   // RENDER LOOP
   // ============================================================
+  function groundCamera() {
+    camera.position.y = heightAt(camera.position.x, camera.position.z) + EYE;
+  }
   let lastT = performance.now();
   engine.runRenderLoop(() => {
     const now = performance.now();
-    const dt = Math.min(0.05, (now - lastT) / 1000);
-    lastT = now;
+    const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
     scene.render();
     if (!state.started) return;
-
     updateTweens(dt);
     updateCompanions(dt);
 
-    if (state.mode === "2d") {
-      update2D(dt);
-    } else if (state.mode === "boss") {
-      updateBoss(dt);
+    if (state.mode === "2d") { update2D(dt); return; }
+
+    groundCamera();
+    if (state.mode === "boss") { updateBoss(dt); return; }
+
+    // 3d: crosshair + contextual hint
+    const m = lookedAtInteractive();
+    if (m) {
+      dom.crosshair.classList.add("active");
+      const def = m.metadata.def;
+      if (def.puzzle === "boss" && !canActivate(def))
+        setInstr("The guardian sleeps. Restore the light and open the door first.");
+      else setInstr((isTouch ? "Tap ⚔" : "Press E") + " to enter “" + def.title + "”");
     } else {
-      // 3d: crosshair feedback + contextual hint
-      const m = lookedAtInteractive();
-      if (m) {
-        dom.crosshair.classList.add("active");
-        const def = m.metadata.def;
-        if (def.puzzle === "boss" && !canActivate(def)) {
-          setInstr("The guardian sleeps. Restore the light and open the door first.");
-        } else {
-          setInstr((isTouch ? "Tap ⚔" : "Press E") + " to enter “" + def.title + "”");
-        }
-      } else {
-        dom.crosshair.classList.remove("active");
-        setInstr(defaultInstr());
-      }
+      dom.crosshair.classList.remove("active");
+      setInstr(defaultInstr());
     }
   });
 
@@ -661,10 +491,10 @@
     renderObjectives();
     showTouch(isTouch);
     setInstr(defaultInstr());
-    if (!isTouch) canvas.requestPointerLock && setTimeout(() => canvas.requestPointerLock(), 50);
+    if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 50);
   }
   dom.startBtn.addEventListener("click", startGame);
 
-  console.log("%c[Whispers of the Fresco] ready — Babylon.js dual-perspective prototype",
+  console.log("%c[Whispers of the Fresco] low-poly world ready — Babylon.js",
     "color:#4ade80;font-weight:bold");
 })();
