@@ -110,6 +110,8 @@
     currentMural: null,
     paintedChar: null,
     patch: null,
+    hazard: null,
+    companionsStay: false,
     savedCam: null,
     move2D: { neg: false, pos: false },
     touchMove: { x: 0, y: 0 },
@@ -137,8 +139,8 @@
   const muralDefs = [
     { id: "nile", title: "Daily Life on the Nile", scene: "nile", char: "worker",
       wall: walls.backWall, local: new B.Vector3(0, 0.2, 0.33), size: { w: 8, h: 3.4 },
-      puzzle: "walk", axis: "x",
-      hint: "Walk the worker to the far side to haul the rope that lifts the eastern door to the oasis." },
+      puzzle: "walk", axis: "x", hazard: true,
+      hint: "Walk the worker to the far side — but dodge the painted flames along the way!" },
     { id: "climb", title: "The Painted Climber", char: "climber",
       wall: climbPillar, local: new B.Vector3(0, 0.0, -0.52), facing: Math.PI, size: { w: 0.95, h: 4.4 },
       puzzle: "climb", axis: "y", panel: true,
@@ -313,6 +315,22 @@
     ch.metadata = { axis, min: -span, max: span, otherX: 0, otherY: 0, phase: 0 };
     state.paintedChar = ch;
 
+    // painted hazard (a moving flame the figure must dodge)
+    if (state.hazard) { state.hazard.dispose(); state.hazard = null; }
+    if (def.hazard && axis === "x") {
+      const hz = B.MeshBuilder.CreatePlane("hazard", { width: charW * 0.7, height: charH * 0.55, sideOrientation: B.Mesh.DOUBLESIDE }, scene);
+      hz.parent = mural;
+      const hm = new B.StandardMaterial("hazMat", scene);
+      hm.diffuseTexture = Art.tornPatchTexture(B, scene); // reuse as a glow blob
+      hm.diffuseTexture.hasAlpha = true; hm.useAlphaFromDiffuseTexture = true;
+      hm.emissiveColor = new B.Color3(1, 0.4, 0.05); hm.diffuseColor = new B.Color3(1, 0.4, 0.05);
+      hm.specularColor = new B.Color3(0, 0, 0); hm.backFaceCulling = false;
+      hz.material = hm;
+      hz.position.set(span * 0.3, 0, 0.07);
+      hz.metadata = { dir: -1, min: -span * 0.75, max: span * 0.75 };
+      state.hazard = hz;
+    }
+
     // touch button glyphs depend on the movement axis
     dom.tcLeft.textContent = axis === "y" ? "▼" : "◀";
     dom.tcRight.textContent = axis === "y" ? "▲" : "▶";
@@ -336,6 +354,7 @@
     flashSpot.setEnabled(true); showHeld(true);
     if (state.paintedChar) { state.paintedChar.dispose(); state.paintedChar = null; }
     if (state.patch) { state.patch.dispose(); state.patch = null; }
+    if (state.hazard) { state.hazard.dispose(); state.hazard = null; }
     state.currentMural = null;
     state.cam2D = null;
     state.move2D.neg = state.move2D.pos = false;
@@ -364,6 +383,18 @@
     }
     // patch trails the figure
     if (state.patch) { state.patch.position.x = ch.position.x; state.patch.position.y = ch.position.y; }
+
+    // painted hazard: moves back and forth; touching it sends the figure back
+    if (state.hazard) {
+      const hz = state.hazard, hm = hz.metadata;
+      hz.position.x += hm.dir * 2.6 * dt;
+      if (hz.position.x > hm.max) { hz.position.x = hm.max; hm.dir = -1; }
+      if (hz.position.x < hm.min) { hz.position.x = hm.min; hm.dir = 1; }
+      if (Math.abs(hz.position.x - ch.position.x) < 0.45 && Math.abs(hz.position.y - ch.position.y) < 0.6) {
+        ch.position[key] = meta.min; Sound.hit(); shake();
+        toast("The painted flames drove you back!", 1600);
+      }
+    }
 
     // cross-dimension link: the painted barque drives the real 3D boat
     const cur = state.currentMural.metadata.def;
@@ -470,6 +501,7 @@
         if (k >= 1) { root.scaling.set(1, 1, 1); c.peel = null; }
         return;
       }
+      if (state.companionsStay) { root.position.y = heightAt(root.position.x, root.position.z); c.api.update(dt, false); return; }
       const back = camera.getDirection(B.Axis.Z).scale(-c.offset);
       const side = camera.getDirection(B.Axis.X).scale((i % 2 ? 1 : -1) * 1.0);
       const want = camera.position.add(back).add(side);
@@ -499,7 +531,7 @@
 
   function startBossFight(def) {
     if (state.boss) return;
-    Sound.bossRoar();
+    Sound.bossRoar(); Sound.setBossMode(true);
     state.mode = "boss";
     toast("THE GUARDIAN AWAKENS", 2600);
     def.mesh.material.emissiveColor = new B.Color3(0.7, 0.25, 0.05);
@@ -627,7 +659,7 @@
   }
 
   function defeatBoss() {
-    const b = state.boss; Sound.bossDown();
+    const b = state.boss; Sound.bossDown(); Sound.setBossMode(false);
     state.objectives.boss = true; renderObjectives(); saveGame();
     toast("THE GUARDIAN IS VANQUISHED", 3200);
     dom.bossBar.style.display = "none";
@@ -1240,6 +1272,7 @@
     if (k === "j" && state.mode !== "2d") { toggleQuests(); return; }
     if (k === "c" && state.mode !== "2d") { toggleCodex(); return; }
     if (k === "t" && state.mode !== "2d") { world.skipTime(); toast("Time passes — " + world.timeLabel(), 1400); return; }
+    if (k === "g" && state.mode !== "2d") { state.companionsStay = !state.companionsStay; toast("Companions: " + (state.companionsStay ? "hold position" : "follow"), 1400); return; }
     if (k === "h" && state.mode !== "2d") { usePotion(); return; }
     if (k === "p" && state.mode !== "2d") { state.photo = !state.photo; document.body.classList.toggle("photo", state.photo); return; }
     if (e.key === "Escape") {
@@ -1595,6 +1628,7 @@
     renderObjectives();
     showTouch(isTouch);
     setInstr(defaultInstr());
+    if (!saveData) runTutorial();
     if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
   }
 
@@ -1609,6 +1643,17 @@
     currentOverlay = null; state.paused = false;
     showScreen(null);
     if (!isTouch) setTimeout(() => canvas.requestPointerLock && canvas.requestPointerLock(), 60);
+  }
+  function runTutorial() {
+    if (localStorage.getItem("wotf_tutorialDone")) return;
+    const steps = [
+      [800, "Move with W A S D · look with the mouse (click to lock the cursor)."],
+      [6500, "Follow the golden beacon to your objective. Open the map with M."],
+      [13000, "Walk to a wall mural and press E to step inside the painting."],
+      [19500, "Strike shades with your weapon (click) · switch with 1 / 2 / 3 · drink a jar with H."],
+    ];
+    steps.forEach(([ms, txt]) => setTimeout(() => { if (state.started && !state.paused && !state.dialogue) toast(txt, 3400); }, ms));
+    setTimeout(() => { try { localStorage.setItem("wotf_tutorialDone", "1"); } catch (e) {} }, 20000);
   }
   function pauseGame() {
     if (!state.started || state.paused || state.mode === "2d") return;

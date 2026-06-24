@@ -52,25 +52,25 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 ## 3. World, environments & level design
 - [ ] **More biomes / zones** (L): canyon with **mountains & cliffs**, a flooded crypt, a night desert, a marketplace, a pyramid interior, the underworld (Duat).
 - [ ] **Mountains & rock formations** (M) — low-poly mountain meshes, mesas, layered cliffs, scree fields of **stones/boulders**.
-- [ ] **Better water** (M–L) — reflective/refractive shader water, shoreline foam, the Nile river, waterfalls, ripples on interaction.
+- [~] **Better water** — animated ripples + oasis foam ring ✅; reflective shader / Nile / waterfalls TBD.
 - [ ] **Rocks & props variety** (S) — more rock/cactus/plant variants, broken columns, statues, sphinxes, urns, braziers.
 - [ ] **Level / world structure** (L) — discrete **levels ("worlds")** or a connected open hub with portals between zones; level-select screen.
 - [ ] **Procedural scatter / variation** (M) — seeded placement so each zone feels rich but performant.
-- [~] **Day/night cycle** — moving sun, sky/light/fog shifts, starlit night (T to skip). ✅  Weather (sandstorms/rain) TBD.
+- [~] **Day/night cycle + weather** — sun/sky/fog day→night (T to skip) ✅; periodic sandstorms ✅; rain TBD.
 - [ ] **Interactive environment** (M) — destructible pots, movable blocks, pressure plates, rope/pulley puzzles.
 - [ ] **Verticality** (M) — staircases, ledges, climbable surfaces, elevators.
 
 ## 4. Dual-perspective mechanic expansion (the core hook)
 - [ ] **More fresco puzzle types** (L): pour water in 2D to flood a 3D basin; light a 2D torch to open a 3D path; rotate a 2D gear that turns a 3D mechanism; a 2D bridge that becomes 3D-walkable.
 - [ ] **Multiple 2D characters + collision** (M) — guide two painted figures; they block/help each other.
-- [ ] **Painted hazards** (M) — 2D fire, snakes, falling blocks the figure must avoid.
+- [x] **Painted hazards** — a moving flame in the Nile fresco sends the figure back if touched. ✅
 - [ ] **Frescoes that span multiple walls / wrap corners** (M).
 - [ ] **"Bring object to 3D"** (L) — peel off not just allies but objects (a painted ladder/boat becomes real).
 - [ ] **Time-of-day painted scenes** (M) — same fresco changes with the 3D world state.
 
 ## 5. Characters, companions & NPCs
 - [ ] **Companion abilities** (M) — allies that fight, carry, boost, or activate switches.
-- [ ] **Companion commands** (M) — point them somewhere, hold position.
+- [x] **Companion commands** — toggle companions between follow / hold (G). ✅
 - [x] **NPCs with dialogue** — merchant, priest, child in the city; proximity-talk dialogue UI. ✅ (branching TBD)
 - [ ] **Enemies / patrols** (L) — scarab swarms, mummies, temple guards with simple AI (patrol/chase/attack).
 - [~] **Animation/variety** — varied citizen types (men/women/children/monks/queens/soldiers); skeletal rigs TBD.
@@ -94,13 +94,13 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Settings menu** (M) — graphics quality, sensitivity, volume, language, key rebinding.
 - [x] **World map & minimap** — live minimap + full map (M) showing player, treasure, secrets, buildings, oasis. ✅ (fast travel TBD)
 - [x] **In-world markers/waypoints** — glowing beacon + minimap ring on the active objective. ✅
-- [ ] **Tutorial / onboarding** (M) — contextual hints, a guided first room.
+- [x] **Tutorial / onboarding** — staged contextual hints on a new game. ✅
 - [ ] **Better HUD** (S) — health, stamina, equipped tool, objective tracker.
 - [ ] **Localization / i18n** (M) — externalize strings; multi-language.
 
 ## 9. Audio
 - [x] **Procedural Egyptian music** — Hijaz-scale oud/harp + frame-drum + drone, with a Music toggle. ✅ (recorded score TBD)
-- [ ] **Adaptive/dynamic music** (L) — calm explore → tense boss layers.
+- [x] **Adaptive music** — tempo/percussion intensify during boss fights. ✅
 - [ ] **3D positional audio** (S) — Babylon spatial sound for torches, water, enemies.
 - [ ] **Voice / narration** (M).
 - [ ] **Audio settings & ducking** (S).

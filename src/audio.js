@@ -35,7 +35,8 @@
   let musicOn = true, musicGain = null, musicTimer = null, mStep = 0, mNextT = 0;
   const ROOTF = 146.83;                 // ~D3
   const SCALE = [0, 1, 4, 5, 7, 8, 11]; // double harmonic major (exotic, Egyptian feel)
-  const TEMPO = 90, STEPDUR = 60 / TEMPO / 2; // 8th-note steps
+  let TEMPO = 90, STEPDUR = 60 / TEMPO / 2; // 8th-note steps
+  let _intense = false;
   // 16-step (2-bar) loop. Melody = indices into the scale (null = rest).
   const MEL = [7, null, 9, 10, 9, 7, 5, 7, 4, 5, 7, null, 5, 4, 2, 0];
   const DUM = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0]; // low drum
@@ -78,6 +79,7 @@
     if (m !== null) pluck(noteFreq(m), t, STEPDUR * 1.7, 0.13);
     if (DUM[s]) drum(true, t);
     if (TEK[s]) drum(false, t);
+    if (_intense && (s % 2 === 0)) { tone(ROOTF / 2, STEPDUR * 0.9, "sawtooth", 0.07); } // tense bass pulse
   }
   function musicScheduler() {
     while (mNextT < ctx.currentTime + 0.25) { playStep(mStep, mNextT); mStep = (mStep + 1) % 16; mNextT += STEPDUR; }
@@ -181,7 +183,8 @@
     isReady: () => started,
     setVolume(v) { _vol = Math.max(0, Math.min(1, v)); if (master) master.gain.value = _mute ? 0 : _vol; },
     setMute(b) { _mute = !!b; if (master) master.gain.value = _mute ? 0 : _vol; },
-    setMusicEnabled(b) { musicOn = !!b; if (musicGain) musicGain.gain.value = musicOn ? 0.5 : 0; },
+    setMusicEnabled(b) { musicOn = !!b; if (musicGain) musicGain.gain.value = musicOn ? (_intense ? 0.62 : 0.5) : 0; },
+    setBossMode(on) { _intense = !!on; TEMPO = on ? 132 : 90; STEPDUR = 60 / TEMPO / 2; if (musicGain && musicOn) musicGain.gain.value = on ? 0.62 : 0.5; },
 
     // "come alive" whoosh when entering a painting
     whoosh() {

@@ -273,6 +273,42 @@
     dust.minEmitPower = 0.02; dust.maxEmitPower = 0.08;
     dust.start();
 
+    // ---- sandstorm weather (periodic) ----
+    const sand = new B.ParticleSystem("sand", 1200, scene);
+    sand.particleTexture = dot;
+    const sandEmitter = new B.TransformNode("sandEmitter", scene);
+    sand.emitter = sandEmitter;
+    sand.minEmitBox = new B.Vector3(-30, -6, -30);
+    sand.maxEmitBox = new B.Vector3(30, 14, 30);
+    sand.color1 = new B.Color4(0.86, 0.74, 0.5, 0.5);
+    sand.color2 = new B.Color4(0.78, 0.64, 0.42, 0.35);
+    sand.colorDead = new B.Color4(0.8, 0.68, 0.45, 0);
+    sand.minSize = 0.15; sand.maxSize = 0.6;
+    sand.minLifeTime = 1.2; sand.maxLifeTime = 2.5;
+    sand.emitRate = 700;
+    sand.direction1 = new B.Vector3(8, 0.5, 2); sand.direction2 = new B.Vector3(12, 1.5, 4);
+    sand.minEmitPower = 6; sand.maxEmitPower = 12;
+    const baseFog = scene.fogDensity;
+    let storm = false, stormCd = 60 + Math.random() * 50, stormT = 0;
+    function setSandstorm(on) {
+      storm = on;
+      if (on) { sand.start(); stormT = 16 + Math.random() * 10; }
+      else { sand.stop(); }
+    }
+    scene.onBeforeRenderObservable.add(() => {
+      const dt = Math.min(0.05, scene.getEngine().getDeltaTime() / 1000);
+      if (scene.activeCamera) sandEmitter.position.copyFrom(scene.activeCamera.position);
+      if (storm) { stormT -= dt; if (stormT <= 0) setSandstorm(false); scene.fogDensity = Math.min(0.05, scene.fogDensity + dt * 0.02); }
+      else { stormCd -= dt; if (stormCd <= 0) { stormCd = 70 + Math.random() * 60; setSandstorm(true); } scene.fogDensity = Math.max(baseFog, scene.fogDensity - dt * 0.02); }
+    });
+
+    // ---- shoreline foam ring around the oasis ----
+    const foam = B.MeshBuilder.CreateTorus("foam", { diameter: 23, thickness: 0.5, tessellation: 36 }, scene);
+    const foamMat = new B.StandardMaterial("foamMat", scene);
+    foamMat.emissiveColor = B.Color3.FromHexString("#cfeaf2"); foamMat.diffuseColor = new B.Color3(0, 0, 0);
+    foamMat.disableLighting = true; foamMat.alpha = 0.5;
+    foam.material = foamMat; foam.position.set(38, -0.45, -8); foam.isPickable = false;
+
     // ---- distant mountain range ringing the world ----
     for (let i = 0; i < 14; i++) {
       const a = (i / 14) * Math.PI * 2 + LP.hash(i, 1) * 0.25;
@@ -450,7 +486,7 @@
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
              boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings, jars,
              citizens, weaponPickups, scrolls,
-             sky, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
+             sky, setSandstorm, isStorm: () => storm, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
              timeLabel: () => { const e = Math.sin(sky.t * Math.PI * 2); return e > 0.35 ? "Day" : e > -0.1 ? "Dusk" : e > -0.6 ? "Night" : "Midnight"; },
              oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };
   }

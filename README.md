@@ -26,6 +26,12 @@ Walk up and press **E** to talk; they share lore and hints. **Merchant Khufu**
 offers a **side quest** ("gather 3 Sacred Scarabs") that you can track in the
 **Quest Log** (`J`) and turn in for a reward.
 
+**Weather:** **sandstorms** periodically roll across the desert (drifting sand
++ thickening haze); a foam ring rims the oasis. The **music turns tense** during
+boss fights. New players get **onboarding hints**. Some frescoes now contain
+**painted hazards** (dodge the flames) and you can order companions to
+**follow or hold** (`G`).
+
 **Day/night cycle:** the sun arcs across the sky and the world shifts from day
 to dusk to a **starlit night** (the temple's torchlight matters more after
 dark). Press **T** to skip ahead. **Lore scrolls** are scattered to collect —
@@ -95,6 +101,7 @@ walk near one to collect it.
 | Quest log | `J` | — | — |
 | Lore codex | `C` | — | — |
 | Skip time of day | `T` | — | — |
+| Companions follow / hold | `G` | — | — |
 | Drink water jar (heal) | `H` | — | — |
 | Photo mode (hide HUD) | `P` | — | — |
 | Attack (equipped weapon) | Click / `Space` | ⚔ button | A |
