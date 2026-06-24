@@ -40,7 +40,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Skill tree / upgrades** (L) — spend collected scarabs on light range, strike power, climb speed.
 - [x] **Health** — Vitality bar, enemy damage, out-of-combat regen, respawn at the gate. ✅
 - [ ] **Lives / checkpoints / respawn** (M) — shrines act as checkpoints.
-- [ ] **Collectibles & lore notes** (S–M) — hidden ankhs, papyri that expand the story.
+- [x] **Collectibles & lore notes** — papyrus scrolls scattered to collect. ✅
 - [x] **Photo mode** — `P` hides all HUD for clean screenshots. ✅
 
 ## 2. Inventory & crafting (deeper)
@@ -56,7 +56,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Rocks & props variety** (S) — more rock/cactus/plant variants, broken columns, statues, sphinxes, urns, braziers.
 - [ ] **Level / world structure** (L) — discrete **levels ("worlds")** or a connected open hub with portals between zones; level-select screen.
 - [ ] **Procedural scatter / variation** (M) — seeded placement so each zone feels rich but performant.
-- [ ] **Day/night cycle & weather** (L) — moving sun, sandstorms, rain, dynamic sky.
+- [~] **Day/night cycle** — moving sun, sky/light/fog shifts, starlit night (T to skip). ✅  Weather (sandstorms/rain) TBD.
 - [ ] **Interactive environment** (M) — destructible pots, movable blocks, pressure plates, rope/pulley puzzles.
 - [ ] **Verticality** (M) — staircases, ledges, climbable surfaces, elevators.
 
@@ -78,14 +78,14 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 ## 6. Combat & bosses
 - [~] **Combat depth** — melee (khopesh/spear) + ranged (bow arrows) vs. shades & boss; dodge/combos TBD.
 - [ ] **More bosses** (XL) — a spider-guardian, a serpent (Apophis), a sphinx riddle-boss; each with a unique 2D/3D gimmick.
-- [ ] **Boss telegraphs & dodgeable attacks** (M) — currently roars are cosmetic; make them real attacks.
+- [x] **Boss telegraphs & dodgeable attacks** — Anubis emits a telegraphed ground shockwave you must back away from. ✅
 - [ ] **Enemy variety & spawning** (M).
 - [x] **Difficulty modes** — Story / Normal / Hard scale enemy damage (Settings). ✅
 
 ## 7. Story, quests & content
 - [x] **Quest log + a side quest** — journal (J) with main story + NPC side quest (Scarabs for Khufu). ✅ (more quests TBD)
 - [ ] **Narrative & cutscenes** (L) — intro, between-zone story beats, ending.
-- [ ] **Lore codex** (S) — unlockable entries on gods, glyphs, history.
+- [x] **Lore codex** — discovered scroll entries shown in a Codex panel (C). ✅
 - [ ] **Hieroglyph "language" puzzle** (M) — learn glyphs to decode doors.
 - [ ] **Branching outcomes / multiple endings** (L).
 

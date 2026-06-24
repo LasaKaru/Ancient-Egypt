@@ -26,6 +26,11 @@ Walk up and press **E** to talk; they share lore and hints. **Merchant Khufu**
 offers a **side quest** ("gather 3 Sacred Scarabs") that you can track in the
 **Quest Log** (`J`) and turn in for a reward.
 
+**Day/night cycle:** the sun arcs across the sky and the world shifts from day
+to dusk to a **starlit night** (the temple's torchlight matters more after
+dark). Press **T** to skip ahead. **Lore scrolls** are scattered to collect —
+read discovered entries in the **Lore Codex** (`C`).
+
 **A living city:** wandering **citizens** — men, women, children, **monks**,
 **queens** and patrolling **soldiers** — populate the streets and market.
 
@@ -88,6 +93,8 @@ walk near one to collect it.
 | Inventory | `I` | — | — |
 | Map | `M` (or click minimap) | 🗺 button | — |
 | Quest log | `J` | — | — |
+| Lore codex | `C` | — | — |
+| Skip time of day | `T` | — | — |
 | Drink water jar (heal) | `H` | — | — |
 | Photo mode (hide HUD) | `P` | — | — |
 | Attack (equipped weapon) | Click / `Space` | ⚔ button | A |

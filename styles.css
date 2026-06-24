@@ -439,6 +439,15 @@ body.playing #instructions { display: block; }
 .victory-sub b { color: var(--gold-bright); }
 .victory-stats { margin: 0 auto 26px; font-size: 15px; opacity: 0.85; line-height: 1.8; }
 
+#clockHud { opacity: 0.8; }
+
+/* ---------- Codex ---------- */
+.codex-list { max-height: 50vh; overflow-y: auto; }
+.codex-entry { padding: 8px 0; border-bottom: 1px solid rgba(244,217,160,0.12); }
+.codex-entry h4 { margin: 0 0 4px; color: var(--gold-bright); font-size: 15px; letter-spacing: 1px; }
+.codex-entry p { margin: 0; font-size: 13px; line-height: 1.5; opacity: 0.9; }
+.codex-empty { font-size: 13px; opacity: 0.6; }
+
 /* ---------- Quest log ---------- */
 .quest-list { list-style: none; margin: 0 0 6px; padding: 0; }
 .quest-list li { padding: 6px 0 6px 22px; position: relative; line-height: 1.4; font-size: 14px; opacity: 0.92; }

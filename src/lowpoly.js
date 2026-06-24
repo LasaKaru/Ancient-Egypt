@@ -546,6 +546,17 @@
     return { root, glow };
   }
 
+  // ---------- lore scroll (papyrus) ----------
+  function scroll(pos) {
+    const root = new B.TransformNode("scroll", _scene);
+    root.position = pos.clone();
+    const paper = mat("#e7ddc6", "#6a5a3a", 0.25), rod = mat("#caa05a", "#7a5c10", 0.3);
+    const body = cyl(0.9, 0.16, 0.16, 8, paper, "scrollBody"); body.parent = root; body.rotation.z = Math.PI / 2; body.position.y = 0.9;
+    [-0.5, 0.5].forEach((x) => { const cap = cyl(0.16, 0.12, 0.12, 8, rod, "scrollCap"); cap.parent = root; cap.rotation.z = Math.PI / 2; cap.position.set(x, 0.9, 0); });
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; });
+    return root;
+  }
+
   // ---------- healing water jar (consumable) ----------
   function jar(pos) {
     const root = new B.TransformNode("jar", _scene);
@@ -605,6 +616,6 @@
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
     flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall, jar, beacon,
-    weapon, arrow, weaponPickup,
+    weapon, arrow, weaponPickup, scroll,
   };
 })(window);

@@ -71,9 +71,43 @@
 
     // ---- sky, sun disc, clouds ----
     LP.skydome();
-    LP.sun(new B.Vector3(80, 60, -90));
+    const sunMesh = LP.sun(new B.Vector3(80, 60, -90));
     [[-40, 40, -60, 2], [30, 46, -70, 2.6], [-10, 52, 40, 2.2], [55, 44, 10, 1.8]]
       .forEach((c) => LP.cloud(new B.Vector3(c[0], c[1], c[2]), c[3]));
+
+    // ---- night + stars overlay domes (for the day/night cycle) ----
+    const nightDome = B.MeshBuilder.CreateSphere("nightDome", { diameter: 592, segments: 10, sideOrientation: B.Mesh.BACKSIDE }, scene);
+    const nMat = new B.StandardMaterial("nightMat", scene);
+    nMat.diffuseColor = new B.Color3(0, 0, 0); nMat.emissiveColor = B.Color3.FromHexString("#0a1430");
+    nMat.disableLighting = true; nMat.backFaceCulling = false; nMat.fogEnabled = false; nMat.alpha = 0;
+    nightDome.material = nMat; nightDome.infiniteDistance = true; nightDome.isPickable = false;
+    const starTex = new B.DynamicTexture("stars", { width: 1024, height: 512 }, scene, true);
+    const sctx = starTex.getContext(); sctx.clearRect(0, 0, 1024, 512);
+    for (let i = 0; i < 500; i++) { const b = Math.random(); sctx.fillStyle = `rgba(255,255,255,${0.4 + b * 0.6})`; const s = Math.random() * 2 + 0.5; sctx.fillRect(Math.random() * 1024, Math.random() * 512, s, s); }
+    starTex.hasAlpha = true; starTex.update();
+    const starDome = B.MeshBuilder.CreateSphere("starDome", { diameter: 584, segments: 10, sideOrientation: B.Mesh.BACKSIDE }, scene);
+    const stMat = new B.StandardMaterial("starMat", scene);
+    stMat.diffuseColor = new B.Color3(0, 0, 0); stMat.emissiveColor = new B.Color3(1, 1, 1);
+    stMat.emissiveTexture = starTex; stMat.opacityTexture = starTex;
+    stMat.disableLighting = true; stMat.backFaceCulling = false; stMat.fogEnabled = false; stMat.alpha = 0;
+    starDome.material = stMat; starDome.infiniteDistance = true; starDome.isPickable = false;
+
+    const sky = { t: 0.2 }; // 0..1 ; ~0.2 ≈ warm late-afternoon
+    const C_DAY = B.Color3.FromHexString("#caa07a"), C_NIGHT = B.Color3.FromHexString("#15203f");
+    function applyDayNight() {
+      const ang = sky.t * Math.PI * 2, elev = Math.sin(ang);
+      const day = Math.max(0, elev), night = Math.max(0, -elev), k = elev * 0.5 + 0.5;
+      sunLight.intensity = 0.12 + day * 1.0;
+      sunLight.diffuse = B.Color3.Lerp(B.Color3.FromHexString("#9fb4ff"), B.Color3.FromHexString("#ffe6b0"), day);
+      sunLight.direction = new B.Vector3(Math.cos(ang), -Math.max(0.18, Math.abs(elev)), Math.sin(ang)).normalize();
+      hemi.intensity = 0.16 + day * 0.5;
+      scene.fogColor = B.Color3.Lerp(C_NIGHT, C_DAY, k);
+      nMat.alpha = night * 0.82; stMat.alpha = night;
+      sunMesh.position = new B.Vector3(Math.cos(ang), Math.max(-0.2, elev), Math.sin(ang)).scale(200);
+      sunMesh.setEnabled(elev > -0.08);
+    }
+    scene.onBeforeRenderObservable.add(() => { sky.t = (sky.t + (scene.getEngine().getDeltaTime() / 1000) / 240) % 1; applyDayNight(); });
+    applyDayNight();
 
     // ---- terrain ----
     LP.dunes(180, 90, heightAt);
@@ -388,6 +422,17 @@
       weaponPickups.forEach((w) => { if (!w.taken) { w.root.rotation.y += 0.02; w.root.position.y = heightAt(w.root.position.x, w.root.position.z) + Math.sin(t) * 0.12; } });
     });
 
+    // ---- lore scrolls (papyrus collectibles) ----
+    const scrolls = [];
+    [[2, 4, 0], [-34, -10, 1], [33, -6, 2], [-9, 6, 3]].forEach((s) => {
+      const x = s[0], z = s[1];
+      scrolls.push({ root: LP.scroll(new B.Vector3(x, heightAt(x, z), z)), id: s[2], taken: false });
+    });
+    scene.onBeforeRenderObservable.add(() => {
+      const t = performance.now() * 0.001;
+      scrolls.forEach((s) => { if (!s.taken) { s.root.rotation.y += 0.015; s.root.position.y = heightAt(s.root.position.x, s.root.position.z) + Math.sin(t + s.id) * 0.1; } });
+    });
+
     // ---- healing water jars (consumables) ----
     const jars = [];
     [[5, 3], [-30, -8], [33, -4], [3, -28]].forEach((s, i) => {
@@ -404,7 +449,9 @@
 
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
              boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings, jars,
-             citizens, weaponPickups,
+             citizens, weaponPickups, scrolls,
+             sky, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
+             timeLabel: () => { const e = Math.sin(sky.t * Math.PI * 2); return e > 0.35 ? "Day" : e > -0.1 ? "Dusk" : e > -0.6 ? "Night" : "Midnight"; },
              oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };
   }
 

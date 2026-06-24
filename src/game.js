@@ -41,6 +41,7 @@
     setQuality: $("setQuality"), setFog: $("setFog"), setMusic: $("setMusic"),
     setDifficulty: $("setDifficulty"), setReduced: $("setReduced"), potionHud: $("potionHud"),
     weaponHud: $("weaponHud"), weaponName: $("weaponName"), weaponKeys: $("weaponKeys"),
+    codex: $("codex"), codexList: $("codexList"), btnCodexClose: $("btnCodexClose"), clockHud: $("clockHud"),
     quests: $("quests"), questMain: $("questMain"), questSide: $("questSide"), btnQuestsClose: $("btnQuestsClose"),
   };
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -123,6 +124,7 @@
     quests: { khufu: "unstarted" },
     potions: 0, photo: false, enemyDamage: 8, reducedMotion: false,
     weapons: ["khopesh"], weapon: "khopesh", arrows: [],
+    codex: [],
     health: 100, maxHealth: 100, lastHit: 0,
     objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
@@ -828,6 +830,39 @@
     }
   }
 
+  // ============================================================
+  // LORE NOTES + CODEX
+  // ============================================================
+  const LORE = {
+    0: { title: "The Two Worlds", text: "The frescoes are windows to the spirit-world; what stirs within the paint shapes the stone around us." },
+    1: { title: "The Journey of Ra", text: "Each dawn Ra sails his barque across the sky; each dusk he descends into the Duat to battle the serpent of darkness." },
+    2: { title: "Khepri the Scarab", text: "The sacred scarab rolls the sun across the heavens — a sign of rebirth and the turning of the world." },
+    3: { title: "Anubis, Guardian of the Dead", text: "Jackal-headed Anubis weighs each heart against the feather of Ma'at. The unworthy he does not let pass." },
+  };
+  function checkScrollPickup() {
+    world.scrolls.forEach((s) => {
+      if (s.taken) return;
+      const dx = camera.position.x - s.root.position.x, dz = camera.position.z - s.root.position.z;
+      if (dx * dx + dz * dz < 2.8 * 2.8) {
+        s.taken = true; s.root.setEnabled(false);
+        if (state.codex.indexOf(s.id) < 0) state.codex.push(s.id);
+        Sound.lightUp(); toast("Lore discovered: " + LORE[s.id].title + "  (press C)", 2400);
+        renderCodex(); saveGame();
+      }
+    });
+  }
+  function renderCodex() {
+    const items = state.codex.map((id) => LORE[id]).filter(Boolean);
+    dom.codexList.innerHTML = items.length
+      ? items.map((e) => `<div class="codex-entry"><h4>${e.title}</h4><p>${e.text}</p></div>`).join("")
+      : '<div class="codex-empty">Find papyrus scrolls scattered across the land to uncover the lore.</div>';
+  }
+  function toggleCodex() {
+    if (!state.started || state.mode === "2d") return;
+    if (currentOverlay === "codex") closeOverlay();
+    else if (!currentOverlay) { renderCodex(); openOverlay("codex"); }
+  }
+
   // ---- objective waypoint beacon ----
   const beacon = LP.beacon(); beacon.setEnabled(false);
   function activeWaypoint() {
@@ -1088,6 +1123,31 @@
     document.exitPointerLock && document.exitPointerLock();
   }
 
+  // telegraphed ground shockwave — back away or take damage
+  function bossShockwave() {
+    const b = state.boss; if (!b || !b.g) return;
+    Sound.bossRoar();
+    const c = b.g.root.position.clone();
+    const ring = B.MeshBuilder.CreateTorus("shock", { diameter: 1, thickness: 0.35, tessellation: 24 }, scene);
+    const m = new B.StandardMaterial("shockM", scene);
+    m.emissiveColor = new B.Color3(1, 0.3, 0.1); m.diffuseColor = new B.Color3(0, 0, 0);
+    m.disableLighting = true; m.alpha = 0.75; m.fogEnabled = false;
+    ring.material = m; ring.isPickable = false;
+    ring.position.set(c.x, heightAt(c.x, c.z) + 0.2, c.z); ring.rotation.x = Math.PI / 2;
+    const maxR = 7, startT = performance.now();
+    const anim = () => {
+      const k = Math.min(1, (performance.now() - startT) / 800);
+      ring.scaling.setAll(0.5 + k * maxR * 2);
+      m.alpha = 0.75 * (1 - k);
+      if (k < 1) requestAnimationFrame(anim);
+      else {
+        ring.dispose();
+        if (state.boss && B.Vector3.Distance(camera.position, c) < maxR) damagePlayer(16);
+      }
+    };
+    anim();
+  }
+
   function updateBoss(dt) {
     const b = state.boss; if (!b) return;
     b.t += dt; b.hitCd = Math.max(0, b.hitCd - dt);
@@ -1102,9 +1162,8 @@
       if (toP.length() > 4.5) { toP.normalize(); g.root.position.addInPlace(toP.scale(dt * speed)); g.root.rotation.y = Math.atan2(toP.x, toP.z); }
       b.attackCd -= dt;
       if (b.attackCd <= 0) {
-        b.attackCd = (b.phase === 3 ? 2.5 : 4) + Math.random() * 2; Sound.bossRoar();
-        scene.fogColor = B.Color3.FromHexString("#7a2a12");
-        setTimeout(() => { scene.fogColor = B.Color3.FromHexString("#caa07a"); }, 500);
+        b.attackCd = (b.phase === 3 ? 3.0 : 4.5) + Math.random() * 2;
+        bossShockwave();
       }
     } else if (b.phase === 2) {
       const p = b.painted; if (!p) return;
@@ -1179,12 +1238,14 @@
     if (k === "i" && state.mode !== "2d") { toggleInventory(); return; }
     if (k === "m" && state.mode !== "2d") { toggleMap(); return; }
     if (k === "j" && state.mode !== "2d") { toggleQuests(); return; }
+    if (k === "c" && state.mode !== "2d") { toggleCodex(); return; }
+    if (k === "t" && state.mode !== "2d") { world.skipTime(); toast("Time passes — " + world.timeLabel(), 1400); return; }
     if (k === "h" && state.mode !== "2d") { usePotion(); return; }
     if (k === "p" && state.mode !== "2d") { state.photo = !state.photo; document.body.classList.toggle("photo", state.photo); return; }
     if (e.key === "Escape") {
       if (state.mode === "2d") return;
       if (!dom.settings.classList.contains("hidden")) { showScreen(settingsReturn === "pause" ? "pause" : "menu"); return; }
-      if (currentOverlay === "inventory" || currentOverlay === "map" || currentOverlay === "quests") closeOverlay();
+      if (currentOverlay === "inventory" || currentOverlay === "map" || currentOverlay === "quests" || currentOverlay === "codex") closeOverlay();
       else if (currentOverlay === "pause") resumeGame();
       else pauseGame();
     }
@@ -1322,8 +1383,10 @@
     checkScarabPickup();
     checkJarPickup();
     checkWeaponPickup();
+    checkScrollPickup();
     checkTreasurePickup();
     updateArrows(dt);
+    dom.clockHud.textContent = "· " + world.timeLabel();
     if (state.mode === "boss") { updateBoss(dt); return; }
     updateEnemies(dt);
     updateNPCs(dt);
@@ -1455,6 +1518,8 @@
       companions: state.companions.map((c) => c.colors || {}),
       quests: state.quests,
       potions: state.potions,
+      codex: state.codex,
+      scrolls: world.scrolls.filter((s) => s.taken).map((s) => s.id),
       weapons: state.weapons, weapon: state.weapon,
       jars: world.jars.filter((j) => j.used).map((j) => j.id),
       weaponsTaken: world.weaponPickups.filter((w) => w.taken).map((w) => w.id),
@@ -1474,6 +1539,8 @@
     if (d.obj.boss && !d.obj.treasure) spawnTreasure();
     if (d.quests) state.quests = Object.assign({ khufu: "unstarted" }, d.quests);
     state.potions = d.potions || 0;
+    state.codex = d.codex || [];
+    (d.scrolls || []).forEach((id) => { const s = world.scrolls.find((x) => x.id === id); if (s) { s.taken = true; s.root.setEnabled(false); } });
     if (d.weapons && d.weapons.length) state.weapons = d.weapons.slice();
     if (d.weapon && state.weapons.indexOf(d.weapon) >= 0) state.weapon = d.weapon;
     (d.weaponsTaken || []).forEach((id) => { const w = world.weaponPickups.find((x) => x.id === id); if (w) { w.taken = true; w.root.setEnabled(false); } });
@@ -1488,7 +1555,7 @@
   // ============================================================
   // SCREEN / MENU FLOW
   // ============================================================
-  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map", "quests"];
+  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map", "quests", "codex"];
   function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
   let settingsReturn = "menu";
   let currentOverlay = null; // "pause" | "inventory" | null (in-game overlays)
@@ -1569,6 +1636,7 @@
   dom.btnMapClose.addEventListener("click", closeOverlay);
   dom.minimap.addEventListener("click", toggleMap);
   dom.btnQuestsClose.addEventListener("click", closeOverlay);
+  dom.btnCodexClose.addEventListener("click", closeOverlay);
   dom.tcMap.addEventListener("touchstart", (e) => { e.preventDefault(); toggleMap(); }, { passive: false });
 
   // first user gesture anywhere enables audio (autoplay policy)

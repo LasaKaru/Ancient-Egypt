@@ -28,7 +28,7 @@
   </div>
 
   <!-- Scarab collectible counter -->
-  <div id="scarabHud"><span class="ico">🪲</span> <span id="scarabCount">0 / 5</span></div>
+  <div id="scarabHud"><span class="ico">🪲</span> <span id="scarabCount">0 / 5</span> <span id="clockHud">· ☀ Day</span></div>
 
   <!-- Minimap (click / tap to open the full map) -->
   <canvas id="minimap" width="160" height="160" title="Open map (M)"></canvas>
@@ -208,6 +208,15 @@
       <div class="ft-label">Fast travel</div>
       <div class="map-fast" id="fastTravel"></div>
       <div class="panel-actions"><button class="mbtn" id="btnMapClose">CLOSE</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Codex ===== -->
+  <div id="codex" class="screen hidden">
+    <div class="panel-box">
+      <h2>Lore Codex</h2>
+      <div id="codexList" class="codex-list"></div>
+      <div class="panel-actions"><button class="mbtn" id="btnCodexClose">CLOSE</button></div>
     </div>
   </div>
 
