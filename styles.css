@@ -526,6 +526,21 @@ body.playing #healthHud { display: block; }
   transition: width 0.2s ease;
 }
 
+#potionHud { float: right; opacity: 0.95; letter-spacing: 0; }
+
+/* ---------- Photo mode: hide all HUD ---------- */
+body.photo #objectives, body.photo #instructions, body.photo #scarabHud,
+body.photo #minimap, body.photo #healthHud, body.photo #crosshair,
+body.photo #touchControls, body.photo #dialogue, body.photo #bossBar { display: none !important; }
+
+/* ---------- Screen shake ---------- */
+@keyframes shake {
+  0% { transform: translate(0,0); } 20% { transform: translate(-5px,3px); }
+  40% { transform: translate(4px,-4px); } 60% { transform: translate(-3px,-2px); }
+  80% { transform: translate(3px,3px); } 100% { transform: translate(0,0); }
+}
+#renderCanvas.shake { animation: shake 0.22s ease; }
+
 /* ---------- Damage flash ---------- */
 #damageFlash {
   position: absolute; inset: 0; z-index: 12; pointer-events: none; opacity: 0;

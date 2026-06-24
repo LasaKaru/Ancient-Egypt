@@ -1,0 +1,14 @@
+{
+  "name": "Whispers of the Fresco",
+  "short_name": "Fresco",
+  "description": "A low-poly dual-perspective Ancient Egyptian puzzle-adventure by HelaO2 Studio.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#16244a",
+  "theme_color": "#16244a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

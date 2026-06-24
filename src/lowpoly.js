@@ -483,6 +483,29 @@
     return { root, glow };
   }
 
+  // ---------- healing water jar (consumable) ----------
+  function jar(pos) {
+    const root = new B.TransformNode("jar", _scene);
+    root.position = pos.clone();
+    const clay = mat("#9a6b3f");
+    const body = lowSphere(0.9, 1, clay, "jarBody"); body.parent = root; body.scaling.set(1, 1.25, 1); body.position.y = 0.55;
+    const neck = cyl(0.4, 0.3, 0.42, 7, clay, "jarNeck"); neck.parent = root; neck.position.y = 1.15;
+    const water = lowSphere(0.5, 1, mat("#2c7da0", "#1d5f86", 0.7), "jarWater"); water.parent = root; water.position.y = 1.25; water.scaling.set(1, 0.3, 1);
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; });
+    return root;
+  }
+
+  // ---------- objective waypoint beacon (tall glowing pillar) ----------
+  function beacon() {
+    const m = new B.StandardMaterial("beaconMat", _scene);
+    m.emissiveColor = B.Color3.FromHexString("#ffd24a");
+    m.diffuseColor = new B.Color3(0, 0, 0); m.disableLighting = true;
+    m.alpha = 0.22; m.alphaMode = B.Engine.ALPHA_ADD; m.fogEnabled = false; m.backFaceCulling = false;
+    const c = B.MeshBuilder.CreateCylinder("beacon", { height: 34, diameter: 1.5, tessellation: 10 }, _scene);
+    c.material = m; c.isPickable = false; c.position.y = 17;
+    return c;
+  }
+
   // ---------- collectible scarab ----------
   function scarab(pos) {
     const root = new B.TransformNode("scarab", _scene);
@@ -518,6 +541,6 @@
     hash, mat, flat, box, cyl, lowSphere,
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
-    flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall,
+    flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall, jar, beacon,
   };
 })(window);

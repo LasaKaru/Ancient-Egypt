@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#16244a"/>
+  <!-- ankh in gold -->
+  <g fill="none" stroke="#e8c054" stroke-width="34" stroke-linecap="round">
+    <ellipse cx="256" cy="170" rx="78" ry="96"/>
+    <line x1="256" y1="250" x2="256" y2="430"/>
+    <line x1="166" y1="318" x2="346" y2="318"/>
+  </g>
+</svg>

@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#16244a" />
   <title>Whispers of the Fresco — Ancient Egypt</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -32,7 +35,7 @@
 
   <!-- Player health -->
   <div id="healthHud">
-    <div class="hp-label">VITALITY</div>
+    <div class="hp-label">VITALITY <span id="potionHud">🏺 0</span></div>
     <div class="hp-track"><div class="hp-fill" id="hpFill"></div></div>
   </div>
 
@@ -126,6 +129,18 @@
         <label for="setMusic">Background Music</label>
         <div class="control"><input type="checkbox" id="setMusic"></div>
       </div>
+      <div class="setting-row">
+        <label for="setDifficulty">Difficulty</label>
+        <div class="control"><select id="setDifficulty">
+          <option value="story">Story (relaxed)</option>
+          <option value="normal">Normal</option>
+          <option value="hard">Hard</option>
+        </select></div>
+      </div>
+      <div class="setting-row">
+        <label for="setReduced">Reduced Motion</label>
+        <div class="control"><input type="checkbox" id="setReduced"></div>
+      </div>
       <div class="panel-actions">
         <button class="mbtn" id="btnSettingsBack">BACK</button>
       </div>
@@ -218,6 +233,13 @@
   <!-- Babylon.js (core + GUI) from CDN -->
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+  <!-- PWA service worker (offline app shell; ignored on file://) -->
+  <script>
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    }
+  </script>
 
   <!-- Game modules (classic scripts so it also runs from file://) -->
   <script src="src/art.js"></script>

@@ -39,6 +39,7 @@
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
     setQuality: $("setQuality"), setFog: $("setFog"), setMusic: $("setMusic"),
+    setDifficulty: $("setDifficulty"), setReduced: $("setReduced"), potionHud: $("potionHud"),
     quests: $("quests"), questMain: $("questMain"), questSide: $("questSide"), btnQuestsClose: $("btnQuestsClose"),
   };
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -111,6 +112,7 @@
     npcs: [],
     dialogue: null,
     quests: { khufu: "unstarted" },
+    potions: 0, photo: false, enemyDamage: 8, reducedMotion: false,
     health: 100, maxHealth: 100, lastHit: 0,
     objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
@@ -589,7 +591,7 @@
   }
 
   function damageBoss() {
-    const b = state.boss; b.hpLeft -= 1; b.hitCd = 0.32; Sound.hit(); updateBossBar();
+    const b = state.boss; b.hpLeft -= 1; b.hitCd = 0.32; Sound.hit(); shake(); updateBossBar();
     if (b.phase === 1 && b.hpLeft <= BOSS.p2 + BOSS.p3) { enterPhase2(); return; }
     if (b.phase === 2 && b.hpLeft <= BOSS.p3) { enterPhase3(); return; }
     if (b.hpLeft <= 0) defeatBoss();
@@ -679,7 +681,7 @@
       if (d < 13) {
         const sp = 2.2 * dt; r.position.x += (dx / d) * sp; r.position.z += (dz / d) * sp;
         r.rotation.y = Math.atan2(dx / d, dz / d);
-        if (d < 1.7 && e.cd <= 0) { damagePlayer(8); e.cd = 1.1; }
+        if (d < 1.7 && e.cd <= 0) { damagePlayer(state.enemyDamage); e.cd = 1.1; }
       } else {
         e.wt -= dt; if (e.wt <= 0) { e.heading += (Math.random() - 0.5) * 1.5; e.wt = 1 + Math.random() * 2; }
         r.position.x += Math.sin(e.heading) * 0.6 * dt; r.position.z += Math.cos(e.heading) * 0.6 * dt;
@@ -702,14 +704,65 @@
     }
     return true;
   }
-  function updateHealthHud() { dom.hpFill.style.width = Math.max(0, state.health / state.maxHealth * 100) + "%"; }
+  function updateHealthHud() {
+    dom.hpFill.style.width = Math.max(0, state.health / state.maxHealth * 100) + "%";
+    dom.potionHud.textContent = "🏺 " + state.potions;
+  }
+  function shake() {
+    if (state.reducedMotion) return;
+    canvas.classList.remove("shake"); void canvas.offsetWidth; canvas.classList.add("shake");
+  }
   function damagePlayer(n) {
-    if (!state.started || state.paused) return;
+    if (!state.started || state.paused || state.photo) return;
     state.health -= n; state.lastHit = performance.now(); updateHealthHud();
-    Sound.hit();
-    dom.damageFlash.classList.add("show");
-    setTimeout(() => dom.damageFlash.classList.remove("show"), 180);
+    Sound.hit(); shake();
+    if (!state.reducedMotion) {
+      dom.damageFlash.classList.add("show");
+      setTimeout(() => dom.damageFlash.classList.remove("show"), 180);
+    }
     if (state.health <= 0) respawn();
+  }
+  // ---- consumables (healing jars) ----
+  function checkJarPickup() {
+    world.jars.forEach((j) => {
+      if (j.used) return;
+      const dx = camera.position.x - j.root.position.x, dz = camera.position.z - j.root.position.z;
+      if (dx * dx + dz * dz < 2.6 * 2.6) {
+        j.used = true; j.root.setEnabled(false); state.potions++;
+        Sound.lightUp(); updateHealthHud();
+        toast("Picked up a water jar  (press H to drink)", 1800);
+        saveGame();
+      }
+    });
+  }
+  function usePotion() {
+    if (state.potions <= 0) { toast("No water jars left.", 1200); return; }
+    if (state.health >= state.maxHealth) { toast("Vitality already full.", 1200); return; }
+    state.potions--; state.health = Math.min(state.maxHealth, state.health + 45);
+    updateHealthHud(); Sound.success(); toast("You drink — vitality restored.", 1400); saveGame();
+  }
+  // ---- objective waypoint beacon ----
+  const beacon = LP.beacon(); beacon.setEnabled(false);
+  function activeWaypoint() {
+    if (!state.objectives.door) return { x: 0, z: 9 };          // Nile fresco (back wall)
+    if (!state.objectives.light) return { x: -4, z: -6 };       // climb pillar
+    if (!state.objectives.barque) return { x: 8, z: -7 };       // barque fresco (east wall)
+    if (collectedScarabs() < world.scarabs.length) {            // nearest uncollected scarab
+      let best = null, bd = 1e9;
+      world.scarabs.forEach((s) => { if (s.collected) return; const d = (s.root.position.x - camera.position.x) ** 2 + (s.root.position.z - camera.position.z) ** 2; if (d < bd) { bd = d; best = s; } });
+      if (best) return { x: best.root.position.x, z: best.root.position.z };
+    }
+    if (!state.objectives.boss) return { x: -9, z: 0 };         // Anubis (left wall)
+    if (state.treasure && !state.objectives.treasure) return { x: state.treasure.root.position.x, z: state.treasure.root.position.z };
+    return null;
+  }
+  function updateWaypoint() {
+    const w = activeWaypoint();
+    if (!w) { beacon.setEnabled(false); return; }
+    beacon.setEnabled(true);
+    beacon.position.x = w.x; beacon.position.z = w.z;
+    beacon.position.y = heightAt(w.x, w.z) + 17;
+    state._wp = w;
   }
   function respawn() {
     state.health = state.maxHealth; updateHealthHud();
@@ -878,6 +931,11 @@
         ctx.fillStyle = "rgba(40,25,12,0.85)"; ctx.fillText(l.name, lx, ly - 8);
       });
     }
+    // active objective waypoint ring
+    if (state._wp) {
+      ctx.strokeStyle = "#ffd24a"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px(state._wp.x), py(state._wp.z), 7, 0, Math.PI * 2); ctx.stroke();
+    }
     // treasure
     if (state.treasure) {
       const tx = px(state.treasure.root.position.x), ty = py(state.treasure.root.position.z);
@@ -1030,6 +1088,8 @@
     if (k === "i" && state.mode !== "2d") { toggleInventory(); return; }
     if (k === "m" && state.mode !== "2d") { toggleMap(); return; }
     if (k === "j" && state.mode !== "2d") { toggleQuests(); return; }
+    if (k === "h" && state.mode !== "2d") { usePotion(); return; }
+    if (k === "p" && state.mode !== "2d") { state.photo = !state.photo; document.body.classList.toggle("photo", state.photo); return; }
     if (e.key === "Escape") {
       if (state.mode === "2d") return;
       if (!dom.settings.classList.contains("hidden")) { showScreen(settingsReturn === "pause" ? "pause" : "menu"); return; }
@@ -1165,8 +1225,10 @@
 
     groundCamera();
     regen(dt);
+    updateWaypoint();
     updateMinimap();
     checkScarabPickup();
+    checkJarPickup();
     checkTreasurePickup();
     if (state.mode === "boss") { updateBoss(dt); return; }
     updateEnemies(dt);
@@ -1193,7 +1255,8 @@
   // SETTINGS (persisted to localStorage, applied live)
   // ============================================================
   const SETTINGS_KEY = "wotf_settings";
-  const defaults = { volume: 70, mute: false, sensLevel: 6, fovDeg: 75, quality: "high", fog: true, music: true };
+  const defaults = { volume: 70, mute: false, sensLevel: 6, fovDeg: 75, quality: "high", fog: true, music: true, difficulty: "normal", reducedMotion: false };
+  const ENEMY_DMG = { story: 4, normal: 8, hard: 14 };
   let settings = Object.assign({}, defaults, loadSettings());
 
   function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; } }
@@ -1212,6 +1275,8 @@
     scene.fogMode = settings.fog ? B.Scene.FOGMODE_EXP2 : B.Scene.FOGMODE_NONE;
     Sound.setVolume(settings.volume / 100); Sound.setMute(settings.mute);
     Sound.setMusicEnabled(settings.music);
+    state.enemyDamage = ENEMY_DMG[settings.difficulty] || 8;
+    state.reducedMotion = !!settings.reducedMotion;
     applyQuality(settings.quality);
   }
   function bindSettingsUI() {
@@ -1222,6 +1287,8 @@
     dom.setQuality.value = settings.quality;
     dom.setFog.checked = settings.fog;
     dom.setMusic.checked = settings.music;
+    dom.setDifficulty.value = settings.difficulty;
+    dom.setReduced.checked = settings.reducedMotion;
   }
   dom.setVolume.addEventListener("input", () => { settings.volume = +dom.setVolume.value; dom.setVolumeVal.textContent = settings.volume; applySettings(); saveSettings(); });
   dom.setMute.addEventListener("change", () => { settings.mute = dom.setMute.checked; applySettings(); saveSettings(); });
@@ -1230,6 +1297,8 @@
   dom.setQuality.addEventListener("change", () => { settings.quality = dom.setQuality.value; applySettings(); saveSettings(); });
   dom.setFog.addEventListener("change", () => { settings.fog = dom.setFog.checked; applySettings(); saveSettings(); });
   dom.setMusic.addEventListener("change", () => { settings.music = dom.setMusic.checked; applySettings(); saveSettings(); });
+  dom.setDifficulty.addEventListener("change", () => { settings.difficulty = dom.setDifficulty.value; applySettings(); saveSettings(); });
+  dom.setReduced.addEventListener("change", () => { settings.reducedMotion = dom.setReduced.checked; applySettings(); saveSettings(); });
 
   // ============================================================
   // SCARABS + INVENTORY
@@ -1291,6 +1360,8 @@
       solved: { nile: !!(findDef("nile") || {}).solved, climb: !!(findDef("climb") || {}).solved, boat: !!(findDef("boat") || {}).solved },
       companions: state.companions.map((c) => c.colors || {}),
       quests: state.quests,
+      potions: state.potions,
+      jars: world.jars.filter((j) => j.used).map((j) => j.id),
       scarabs: world.scarabs.filter((s) => s.collected).map((s) => s.id),
       cam: { p: [camera.position.x, camera.position.y, camera.position.z], r: [camera.rotation.x, camera.rotation.y, camera.rotation.z] },
     };
@@ -1306,6 +1377,8 @@
     if (d.obj.boss) { const a = findDef("anubis"); if (a) a.mesh.material.emissiveColor = new B.Color3(0.3, 0.12, 0.04); }
     if (d.obj.boss && !d.obj.treasure) spawnTreasure();
     if (d.quests) state.quests = Object.assign({ khufu: "unstarted" }, d.quests);
+    state.potions = d.potions || 0;
+    (d.jars || []).forEach((id) => { const j = world.jars.find((x) => x.id === id); if (j) { j.used = true; j.root.setEnabled(false); } });
     (d.companions || []).forEach((col) => spawnCompanion(col));
     (d.scarabs || []).forEach((id) => { const s = world.scarabs.find((x) => x.id === id); if (s) { s.collected = true; s.root.setEnabled(false); } });
     if (d.cam) { camera.position = new B.Vector3(d.cam.p[0], d.cam.p[1], d.cam.p[2]); camera.rotation = new B.Vector3(d.cam.r[0], d.cam.r[1], d.cam.r[2]); }

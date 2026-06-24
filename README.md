@@ -80,6 +80,8 @@ walk near one to collect it.
 | Inventory | `I` | — | — |
 | Map | `M` (or click minimap) | 🗺 button | — |
 | Quest log | `J` | — | — |
+| Drink water jar (heal) | `H` | — | — |
+| Photo mode (hide HUD) | `P` | — | — |
 
 Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
 (right side); a connected **gamepad** drives movement and look automatically.

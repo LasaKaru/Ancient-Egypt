@@ -334,6 +334,13 @@
       });
     });
 
+    // ---- healing water jars (consumables) ----
+    const jars = [];
+    [[5, 3], [-30, -8], [33, -4], [3, -28]].forEach((s, i) => {
+      const x = s[0], z = s[1];
+      jars.push({ root: LP.jar(new B.Vector3(x, heightAt(x, z), z)), id: i, used: false });
+    });
+
     // ---- invisible world boundary ----
     const bound = B.MeshBuilder.CreateBox("bound", { width: 170, height: 30, depth: 170 }, scene);
     bound.checkCollisions = true; bound.flipFaces(true); bound.isVisible = false;
@@ -342,7 +349,7 @@
     const spawn = new B.Vector3(0, 1.7, -34);
 
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
-             boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings,
+             boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings, jars,
              oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };
   }
 

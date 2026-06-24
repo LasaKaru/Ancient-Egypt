@@ -7,6 +7,14 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 > Engine: Babylon.js. Keep the flat-shaded low-poly art direction and the
 > dual-perspective (3D explore ⇄ 2D fresco) core throughout.
 
+> **Scope note.** Client-side gameplay/UX items are being implemented and
+> marked ✅. A handful are **infrastructure-bound and out of scope for this
+> single-page, asset-free build**: live chat / voice & co-op netcode, accounts &
+> cloud saves, analytics, leaderboards / community sharing, a Steam release, and
+> a *recorded* score / hi-res "realistic" asset pack. Those need a backend
+> (server + DB), store accounts, or licensed assets, so they're left unchecked
+> on purpose — the next phase once hosting exists.
+
 ---
 
 ## 0. Already implemented ✅
@@ -33,11 +41,11 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [x] **Health** — Vitality bar, enemy damage, out-of-combat regen, respawn at the gate. ✅
 - [ ] **Lives / checkpoints / respawn** (M) — shrines act as checkpoints.
 - [ ] **Collectibles & lore notes** (S–M) — hidden ankhs, papyri that expand the story.
-- [ ] **Photo mode** (M) — free camera + filters for screenshots.
+- [x] **Photo mode** — `P` hides all HUD for clean screenshots. ✅
 
 ## 2. Inventory & crafting (deeper)
 - [ ] **Item combining** (M) — combine fragments (e.g. amulet pieces) to unlock doors.
-- [ ] **Consumables** (S) — oil for the flashlight, healing.
+- [x] **Consumables** — collectible water jars heal Vitality (`H`). ✅
 - [ ] **Resource gathering** (M) — pick up reeds/clay/gold for crafting or trading.
 - [ ] **Merchant NPC / trading** (M).
 
@@ -72,7 +80,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **More bosses** (XL) — a spider-guardian, a serpent (Apophis), a sphinx riddle-boss; each with a unique 2D/3D gimmick.
 - [ ] **Boss telegraphs & dodgeable attacks** (M) — currently roars are cosmetic; make them real attacks.
 - [ ] **Enemy variety & spawning** (M).
-- [ ] **Difficulty modes** (S) — Story / Normal / Hard scaling HP, damage, weak-spot windows.
+- [x] **Difficulty modes** — Story / Normal / Hard scale enemy damage (Settings). ✅
 
 ## 7. Story, quests & content
 - [x] **Quest log + a side quest** — journal (J) with main story + NPC side quest (Scarabs for Khufu). ✅ (more quests TBD)
@@ -85,7 +93,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Main menu & pause menu** (S–M) — start, continue, options, quit.
 - [ ] **Settings menu** (M) — graphics quality, sensitivity, volume, language, key rebinding.
 - [x] **World map & minimap** — live minimap + full map (M) showing player, treasure, secrets, buildings, oasis. ✅ (fast travel TBD)
-- [ ] **In-world markers/waypoints** (S).
+- [x] **In-world markers/waypoints** — glowing beacon + minimap ring on the active objective. ✅
 - [ ] **Tutorial / onboarding** (M) — contextual hints, a guided first room.
 - [ ] **Better HUD** (S) — health, stamina, equipped tool, objective tracker.
 - [ ] **Localization / i18n** (M) — externalize strings; multi-language.
@@ -126,7 +134,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Gamepad support** (M).
 - [ ] **Key rebinding** (S).
 - [ ] **Full mobile controls for 3D** (M) — virtual joystick + look drag (currently 2D-focused).
-- [ ] **Accessibility** (M) — colorblind modes, subtitles, text scaling, reduced-motion, remappable everything, difficulty assists.
+- [~] **Accessibility** — reduced-motion + difficulty assists done; colorblind/subtitles/text-scaling/rebinding TBD.
 
 ## 14. Performance & technical
 - [ ] **Asset/mesh instancing & merging** (M) — thin instances for props (rocks, grass, pillars).
@@ -152,7 +160,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Debug console & cheats** (S) — teleport, skip puzzle, spawn boss (handy for testing).
 
 ## 17. Platform & distribution
-- [ ] **PWA / installable + offline** (M).
+- [x] **PWA / installable + offline** — manifest + service worker (app shell cached). ✅
 - [ ] **Mobile (Capacitor) / desktop (Electron/Tauri) builds** (L).
 - [ ] **Steam release** (L) — achievements, cloud saves.
 - [ ] **itch.io / web build hosting** (S).
