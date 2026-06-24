@@ -546,6 +546,51 @@
     return { root, glow };
   }
 
+  // ---------- nature: leafy tree, flower, camel ----------
+  function tree(pos, scale) {
+    scale = scale || 1;
+    const root = new B.TransformNode("tree", _scene); root.position = pos.clone(); root.scaling.setAll(scale);
+    const trunk = cyl(1.7, 0.22, 0.34, 6, mat("#7a5230"), "trunk"); trunk.parent = root; trunk.position.y = 0.85; trunk.checkCollisions = true;
+    lowSphere(2.4, 1, mat("#3f8a3a"), "leaf").parent = root; root.getChildMeshes().slice(-1)[0].position.y = 2.3;
+    const g2 = lowSphere(1.7, 1, mat("#4f9a44"), "leaf"); g2.parent = root; g2.position.set(0.7, 2.8, 0.2);
+    const g3 = lowSphere(1.6, 1, mat("#357a32"), "leaf"); g3.parent = root; g3.position.set(-0.6, 2.7, -0.3);
+    return root;
+  }
+  function flower(pos) {
+    const root = new B.TransformNode("flower", _scene); root.position = pos.clone();
+    const stem = cyl(0.5, 0.03, 0.05, 4, mat("#4f9a44"), "stem"); stem.parent = root; stem.position.y = 0.25;
+    const col = ["#e0556b", "#e8c054", "#c77dff", "#ff9a3c", "#ffffff"][Math.floor(hash(pos.x, pos.z) * 5) % 5];
+    const head = lowSphere(0.26, 1, mat(col, col, 0.25), "bloom"); head.parent = root; head.position.y = 0.52; head.scaling.y = 0.5;
+    return root;
+  }
+  function camel(pos) {
+    const root = new B.TransformNode("camel", _scene); root.position = pos.clone();
+    const tan = mat("#c79a5b");
+    const body = box(1.9, 0.9, 0.8, tan, "camelBody"); flat(body); body.parent = root; body.position.y = 1.45;
+    const hump = lowSphere(0.8, 1, tan, "hump"); hump.parent = root; hump.position.set(-0.1, 1.95, 0); hump.scaling.set(1, 0.9, 1);
+    [[-0.7, 0.32], [0.7, 0.32], [-0.7, -0.32], [0.7, -0.32]].forEach((l) => { const leg = box(0.2, 1.0, 0.2, tan, "cleg"); flat(leg); leg.parent = root; leg.position.set(l[0], 0.5, l[1]); });
+    const neck = box(0.32, 1.1, 0.32, tan, "neck"); flat(neck); neck.parent = root; neck.position.set(1.0, 2.0, 0); neck.rotation.z = -0.5;
+    const head = box(0.42, 0.36, 0.55, tan, "chead"); flat(head); head.parent = root; head.position.set(1.5, 2.4, 0);
+    return root;
+  }
+  // ---------- modern props: lamppost, bench ----------
+  function lamppost(pos) {
+    const root = new B.TransformNode("lamp", _scene); root.position = pos.clone();
+    const metal = mat("#3a3a42");
+    const pole = cyl(4.4, 0.1, 0.16, 6, metal, "pole"); pole.parent = root; pole.position.y = 2.2;
+    const arm = box(0.1, 0.1, 1.1, metal, "arm"); flat(arm); arm.parent = root; arm.position.set(0, 4.3, 0.45);
+    const lamp = lowSphere(0.45, 1, mat("#fff2c0", "#ffe9a0", 1), "lampHead"); lamp.parent = root; lamp.position.set(0, 4.2, 0.95); lamp.scaling.y = 0.7;
+    return root;
+  }
+  function bench(pos) {
+    const root = new B.TransformNode("bench", _scene); root.position = pos.clone();
+    const wood = mat("#6b4a25");
+    const seat = box(1.8, 0.12, 0.5, wood, "seat"); flat(seat); seat.parent = root; seat.position.y = 0.5;
+    const back = box(1.8, 0.5, 0.12, wood, "back"); flat(back); back.parent = root; back.position.set(0, 0.78, -0.2);
+    [-0.7, 0.7].forEach((x) => { const lg = box(0.12, 0.5, 0.45, wood, "blg"); flat(lg); lg.parent = root; lg.position.set(x, 0.25, 0); });
+    return root;
+  }
+
   // ---------- lore scroll (papyrus) ----------
   function scroll(pos) {
     const root = new B.TransformNode("scroll", _scene);
@@ -616,6 +661,6 @@
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
     flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall, jar, beacon,
-    weapon, arrow, weaponPickup, scroll,
+    weapon, arrow, weaponPickup, scroll, tree, flower, camel, lamppost, bench,
   };
 })(window);

@@ -137,6 +137,11 @@ survive a sandstorm, master the weapons, defeat Anubis, and more. Missions
 **unlock in sequence** as you complete them (progress saved), and the active
 mission's objective + progress shows in a banner.
 
+Missions also change the **setting**: most are the classic ancient desert, but
+some transform the world — a lush **wild Egypt** (green grass, leafy trees,
+flowers, wandering camels) and a **modernised city** (lamp‑lined streets,
+benches) — so the campaign isn't one single scenario.
+
 ## The adventure (objectives)
 
 1. **Open the sealed eastern door** — bring the *Nile* fresco to life.

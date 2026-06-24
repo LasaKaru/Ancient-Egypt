@@ -914,19 +914,19 @@
     { t: "The Guardian's Trial", h: "Anubis weighs your heart.", g: { type: "puzzle", key: "boss" } },
     { t: "Pharaoh's Reward", h: "Gold awaits the worthy.", g: { type: "puzzle", key: "treasure" } },
     { t: "Night of Stars", h: "Stand by the oasis beneath the night sky.", g: { type: "reach", x: 38, z: -8, r: 14, at: "night" } },
-    { t: "Scarab Hunt II", h: "Find every last one.", g: { type: "scarabs", n: 7 } },
+    { t: "Scarab Hunt II", h: "Find every last one amid the wild greenery.", g: { type: "scarabs", n: 7 }, theme: "wild" },
     { t: "Armory of the Ancients", h: "Take up a shaft of bronze.", g: { type: "weapon", w: "spear" } },
     { t: "The Archer's Eye", h: "Loose an arrow true.", g: { type: "arrowKills", n: 3 } },
-    { t: "Desert Wanderer", h: "Walk every quarter of the land.", g: { type: "zonesAll" } },
+    { t: "Verdant Egypt", h: "The land has run green and wild — roam every quarter.", g: { type: "zonesAll" }, theme: "wild" },
     { t: "Storm Survivor", h: "Endure the breath of the desert.", g: { type: "storm" } },
     { t: "Healer's Path", h: "Know when to drink.", g: { type: "potions", n: 2 } },
     { t: "Shade Bane", h: "Cleanse the streets of dusk.", g: { type: "shades", n: 10 } },
     { t: "Lore Keeper", h: "Gather the wisdom of ages.", g: { type: "scrolls", n: 3 } },
-    { t: "The Long Vigil", h: "Hold your ground as time passes.", g: { type: "survive", s: 75 } },
+    { t: "The City Reborn", h: "Ages turn — the old city wakes in a new age. Hold your ground.", g: { type: "survive", s: 75 }, theme: "modern" },
     { t: "Twin Frescoes", h: "Bring two paintings to life.", g: { type: "puzzles", keys: ["door", "light"] } },
     { t: "Master of Arms", h: "Wield all three weapons.", g: { type: "weaponsAll" } },
     { t: "The Full Hunt", h: "Every scarab, every scroll.", g: { type: "huntAll" } },
-    { t: "Cleanse by Moonlight", h: "Drive back the swarming dark.", g: { type: "shades", n: 15 } },
+    { t: "Streets of the Modern City", h: "Under new lamplight, the dark still swarms.", g: { type: "shades", n: 15 }, theme: "modern" },
     { t: "Champion of the Two Worlds", h: "Fulfil the pharaoh's destiny.", g: { type: "all" } },
   ];
   let missionsUnlocked = new Set([0]), missionsDone = new Set();
@@ -988,6 +988,7 @@
   function startMission(i) {
     if (!missionsUnlocked.has(i)) return;
     state.mission = i; resetMissionStats();
+    if (world.setTheme) world.setTheme(MISSIONS[i].theme || "ancient");
     updateMissionBanner();
     toast("Mission " + (i + 1) + ": " + MISSIONS[i].t, 2600);
     if (currentOverlay === "missions") closeOverlay();
@@ -1816,7 +1817,7 @@
 
   // wire buttons
   dom.btnContinue.addEventListener("click", () => startGame(loadSave()));
-  dom.btnPlay.addEventListener("click", () => { clearSave(); startGame(null); });
+  dom.btnPlay.addEventListener("click", () => { clearSave(); startGame(null); if (world.setTheme) world.setTheme("ancient"); });
   dom.btnSettings.addEventListener("click", () => openSettings("menu"));
   dom.btnCredits.addEventListener("click", () => showScreen("credits"));
   dom.btnSettingsBack.addEventListener("click", () => showScreen(settingsReturn === "pause" ? "pause" : "menu"));

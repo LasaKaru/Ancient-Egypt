@@ -110,7 +110,7 @@
     applyDayNight();
 
     // ---- terrain ----
-    LP.dunes(180, 90, heightAt);
+    const dunes = LP.dunes(180, 90, heightAt);
 
     // ---- temple interior (origin). Walls = flat-shaded boxes, rotated so
     //      each wall's local X runs horizontally and local Z is the inward
@@ -476,6 +476,54 @@
       jars.push({ root: LP.jar(new B.Vector3(x, heightAt(x, z), z)), id: i, used: false });
     });
 
+    // ============================================================
+    // THEME LAYERS — wild/nature & modern overlays toggled per mission
+    // ============================================================
+    const natureLayer = new B.TransformNode("natureLayer", scene); natureLayer.setEnabled(false);
+    const modernLayer = new B.TransformNode("modernLayer", scene); modernLayer.setEnabled(false);
+    const free = (x, z) => Math.hypot(x - 38, z + 8) > 14 && Math.hypot(x, z) > 12; // skip oasis & temple
+    // nature: trees, flowers, extra grass
+    for (let i = 0; i < 28; i++) {
+      const a = LP.hash(i, 31) * Math.PI * 2, r = 16 + LP.hash(i, 32) * 50;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r; if (!free(x, z)) continue;
+      LP.tree(new B.Vector3(x, heightAt(x, z), z), 0.8 + LP.hash(i, 33) * 0.7).parent = natureLayer;
+    }
+    for (let i = 0; i < 70; i++) {
+      const a = LP.hash(i, 41) * Math.PI * 2, r = 8 + LP.hash(i, 42) * 55;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r; if (!free(x, z)) continue;
+      (LP.hash(i, 43) > 0.5 ? LP.flower(new B.Vector3(x, heightAt(x, z), z)) : LP.grassTuft(new B.Vector3(x, heightAt(x, z), z))).parent = natureLayer;
+    }
+    // wandering camels (nature)
+    const camels = [];
+    for (let i = 0; i < 5; i++) {
+      const a = LP.hash(i, 51) * Math.PI * 2, r = 18 + LP.hash(i, 52) * 30;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const root = LP.camel(new B.Vector3(x, heightAt(x, z), z)); root.parent = natureLayer;
+      camels.push({ root, home: { x, z }, heading: Math.random() * 6, wt: 0, sp: 0.5 + Math.random() * 0.4 });
+    }
+    scene.onBeforeRenderObservable.add(() => {
+      if (!natureLayer.isEnabled()) return;
+      const dt = Math.min(0.05, scene.getEngine().getDeltaTime() / 1000);
+      camels.forEach((c) => {
+        c.wt -= dt; if (c.wt <= 0) { c.heading += (Math.random() - 0.5) * 1.4; c.wt = 2 + Math.random() * 3; }
+        const nx = Math.sin(c.heading), nz = Math.cos(c.heading);
+        const px = c.root.position.x + nx * c.sp * dt, pz = c.root.position.z + nz * c.sp * dt;
+        if (Math.hypot(px - c.home.x, pz - c.home.z) > 14) c.heading += Math.PI;
+        else { c.root.position.x = px; c.root.position.z = pz; }
+        c.root.position.y = heightAt(c.root.position.x, c.root.position.z); c.root.rotation.y = c.heading;
+      });
+    });
+    // modern: lampposts along the approach, benches in the plaza
+    [[-4, -22], [4, -22], [-4, -8], [4, -8], [-30, -6], [-38, -2]].forEach((p) => { LP.lamppost(new B.Vector3(p[0], heightAt(p[0], p[1]), p[1])).parent = modernLayer; });
+    [[-2, -30], [2, -30], [-34, -2]].forEach((p) => { LP.bench(new B.Vector3(p[0], heightAt(p[0], p[1]), p[1])).parent = modernLayer; });
+
+    function setTheme(name) {
+      const dm = dunes.material;
+      if (name === "wild") { dm.diffuseColor = B.Color3.FromHexString("#a9dd86"); natureLayer.setEnabled(true); modernLayer.setEnabled(false); hemi.diffuse = B.Color3.FromHexString("#cfe6c0"); }
+      else if (name === "modern") { dm.diffuseColor = B.Color3.FromHexString("#c9c4b4"); natureLayer.setEnabled(false); modernLayer.setEnabled(true); hemi.diffuse = B.Color3.FromHexString("#c8cdd8"); }
+      else { dm.diffuseColor = new B.Color3(1, 1, 1); natureLayer.setEnabled(false); modernLayer.setEnabled(false); hemi.diffuse = B.Color3.FromHexString("#bfa9d6"); }
+    }
+
     // ---- invisible world boundary ----
     const bound = B.MeshBuilder.CreateBox("bound", { width: 170, height: 30, depth: 170 }, scene);
     bound.checkCollisions = true; bound.flipFaces(true); bound.isVisible = false;
@@ -486,7 +534,7 @@
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
              boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings, jars,
              citizens, weaponPickups, scrolls,
-             sky, setSandstorm, isStorm: () => storm, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
+             sky, setSandstorm, isStorm: () => storm, setTheme, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
              timeLabel: () => { const e = Math.sin(sky.t * Math.PI * 2); return e > 0.35 ? "Day" : e > -0.1 ? "Dusk" : e > -0.6 ? "Night" : "Midnight"; },
              oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };
   }

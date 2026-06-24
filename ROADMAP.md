@@ -50,7 +50,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Merchant NPC / trading** (M).
 
 ## 3. World, environments & level design
-- [ ] **More biomes / zones** (L): canyon with **mountains & cliffs**, a flooded crypt, a night desert, a marketplace, a pyramid interior, the underworld (Duat).
+- [~] **Theme variants per mission** — wild/nature (grass, trees, flowers, camels) and modernised-city overlays ✅; distinct crypt/Duat/pyramid-interior biomes TBD.
 - [ ] **Mountains & rock formations** (M) — low-poly mountain meshes, mesas, layered cliffs, scree fields of **stones/boulders**.
 - [~] **Better water** — animated ripples + oasis foam ring ✅; reflective shader / Nile / waterfalls TBD.
 - [ ] **Rocks & props variety** (S) — more rock/cactus/plant variants, broken columns, statues, sphinxes, urns, braziers.
