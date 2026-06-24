@@ -264,46 +264,61 @@
     const cloth = mat(opts.cloth || "#bb3b22");
     const hair = mat(opts.hair || "#1a120a");
 
-    function part(w, h, d, m, x, y, z) {
-      const b = box(w, h, d, m, "hpart"); b.parent = root; b.position.set(x, y, z); return b;
+    function part(w, h, d, m, x, y, z, parent) {
+      const b = box(w, h, d, m, "hpart"); flat(b); b.parent = parent || root; b.position.set(x, y, z); return b;
     }
-    const legL = part(0.18, 0.75, 0.22, skin, -0.13, 0.38, 0);
-    const legR = part(0.18, 0.75, 0.22, skin, 0.13, 0.38, 0);
-    part(0.52, 0.7, 0.3, cloth, 0, 1.1, 0);        // torso
-    const armL = part(0.14, 0.62, 0.16, skin, -0.34, 1.12, 0);
-    const armR = part(0.14, 0.62, 0.16, skin, 0.34, 1.12, 0);
-    part(0.36, 0.36, 0.34, skin, 0, 1.63, 0);      // head
+    // ---- legs (thigh) with feet as children so they swing with the stride ----
+    const legL = part(0.17, 0.78, 0.2, skin, -0.12, 0.42, 0);
+    const legR = part(0.17, 0.78, 0.2, skin, 0.12, 0.42, 0);
+    part(0.26, 0.12, 0.34, mat("#6b4a25"), 0, -0.45, 0.05, legL); // foot L
+    part(0.26, 0.12, 0.34, mat("#6b4a25"), 0, -0.45, 0.05, legR); // foot R
+    // ---- pelvis / kilt + tapered torso (waist narrower than chest) ----
+    part(0.46, 0.26, 0.3, cloth, 0, 0.92, 0);       // hips / kilt
+    part(0.42, 0.46, 0.27, cloth, 0, 1.28, 0);      // waist
+    const chest = part(0.56, 0.42, 0.3, cloth, 0, 1.66, 0); // chest / shoulders
+    // ---- arms (upper) with hands as children ----
+    const armL = part(0.13, 0.6, 0.15, skin, -0.36, 1.6, 0);
+    const armR = part(0.13, 0.6, 0.15, skin, 0.36, 1.6, 0);
+    part(0.15, 0.16, 0.17, skin, 0, -0.36, 0.02, armL); // hand L
+    part(0.15, 0.16, 0.17, skin, 0, -0.36, 0.02, armR); // hand R
+    // ---- neck + rounded head ----
+    part(0.14, 0.16, 0.14, skin, 0, 1.94, 0);       // neck
+    const head = lowSphere(0.36, 1, skin, "hhead"); head.parent = root; head.position.set(0, 2.16, 0); head.scaling.set(1, 1.12, 1.04);
+    // simple face: two eyes
+    [-0.08, 0.08].forEach((x) => { const e = box(0.05, 0.06, 0.04, mat("#241a12"), "heye"); flat(e); e.parent = root; e.position.set(x, 2.18, 0.18); });
 
-    // headgear by type
+    // headgear by type (offsets bumped up to sit on the taller head)
     const hat = opts.hat || "nemes";
     if (hat === "nemes") {
-      part(0.42, 0.18, 0.4, hair, 0, 1.78, -0.02);
-      part(0.1, 0.34, 0.42, mat(opts.gold || "#d4a017"), 0, 1.55, -0.18);
+      part(0.42, 0.18, 0.4, hair, 0, 2.34, -0.02);
+      part(0.1, 0.34, 0.42, mat(opts.gold || "#d4a017"), 0, 2.08, -0.18);
     } else if (hat === "hair") {
-      part(0.4, 0.22, 0.4, hair, 0, 1.76, 0);
+      part(0.4, 0.24, 0.4, hair, 0, 2.3, 0);
     } else if (hat === "crown") {                  // queen / royalty
-      part(0.42, 0.2, 0.42, mat("#1a120a"), 0, 1.78, 0);
+      part(0.42, 0.2, 0.42, mat("#1a120a"), 0, 2.32, 0);
       const crown = cyl(0.5, 0.42, 0.34, 8, mat(opts.gold || "#e8c054", "#7a5c00", 0.4), "crown");
-      crown.parent = root; crown.position.y = 2.1;
-      const orb = lowSphere(0.18, 1, mat("#bb3b22", "#7a1a10", 0.5), "crownOrb"); orb.parent = root; orb.position.y = 2.4;
+      crown.parent = root; crown.position.y = 2.62;
+      const orb = lowSphere(0.18, 1, mat("#bb3b22", "#7a1a10", 0.5), "crownOrb"); orb.parent = root; orb.position.y = 2.92;
     } else if (hat === "hood") {                    // monk / priest
-      const hood = cyl(0.55, 0.1, 0.5, 7, cloth, "hood"); hood.parent = root; hood.position.y = 1.78;
+      const hood = cyl(0.55, 0.1, 0.5, 7, cloth, "hood"); hood.parent = root; hood.position.y = 2.32;
     } else if (hat === "helm") {                    // soldier
-      const helm = lowSphere(0.42, 1, mat(opts.gold || "#8a6a3a"), "helm"); helm.parent = root; helm.position.y = 1.74; helm.scaling.y = 0.8;
+      const helm = lowSphere(0.42, 1, mat(opts.gold || "#8a6a3a"), "helm"); helm.parent = root; helm.position.y = 2.28; helm.scaling.y = 0.8;
     }
 
-    // held item
+    // held item (now gripped in the right hand, ~y of the arm)
     const hold = opts.hold || "none";
     if (hold === "spear") {
-      const shaft = cyl(2.2, 0.05, 0.06, 5, mat("#6b4a25"), "spearShaft"); shaft.parent = root; shaft.position.set(0.4, 1.1, 0.05);
-      const tip = cyl(0.35, 0, 0.14, 4, mat("#9a9a9a"), "spearTip"); tip.parent = root; tip.position.set(0.4, 2.25, 0.05);
+      const shaft = cyl(2.2, 0.05, 0.06, 5, mat("#6b4a25"), "spearShaft"); shaft.parent = root; shaft.position.set(0.42, 1.25, 0.08);
+      const tip = cyl(0.35, 0, 0.14, 4, mat("#9a9a9a"), "spearTip"); tip.parent = root; tip.position.set(0.42, 2.4, 0.08);
     } else if (hold === "staff") {
-      const st = cyl(2.0, 0.06, 0.07, 6, mat("#8a6a3a"), "staff"); st.parent = root; st.position.set(0.4, 1.0, 0.05);
-      const knob = lowSphere(0.2, 1, mat("#d4a017", "#7a5c00", 0.4), "staffKnob"); knob.parent = root; knob.position.set(0.4, 2.05, 0.05);
+      const st = cyl(2.0, 0.06, 0.07, 6, mat("#8a6a3a"), "staff"); st.parent = root; st.position.set(0.42, 1.15, 0.08);
+      const knob = lowSphere(0.2, 1, mat("#d4a017", "#7a5c00", 0.4), "staffKnob"); knob.parent = root; knob.position.set(0.42, 2.2, 0.08);
     }
 
     if (opts.scale) root.scaling.setAll(opts.scale);
-    [legL, legR, armL, armR].forEach((p) => p.setPivotPoint(new B.Vector3(0, p === legL || p === legR ? 0.37 : 0.31, 0)));
+    // pivot limbs at the top (hip / shoulder) so they swing naturally
+    legL.setPivotPoint(new B.Vector3(0, 0.39, 0)); legR.setPivotPoint(new B.Vector3(0, 0.39, 0));
+    armL.setPivotPoint(new B.Vector3(0, 0.3, 0)); armR.setPivotPoint(new B.Vector3(0, 0.3, 0));
 
     let phase = 0;
     function update(dt, walking) {
@@ -312,7 +327,6 @@
         const s = Math.sin(phase) * 0.6;
         legL.rotation.x = s; legR.rotation.x = -s;
         armL.rotation.x = -s; armR.rotation.x = s;
-        root.position.y += 0; // y is handled by terrain follow externally
       } else {
         [legL, legR, armL, armR].forEach((p) => p.rotation.x *= 0.8);
       }
@@ -501,6 +515,28 @@
     if (hash(pos.x, 7) > 0.6) { const c = box(0.7, 0.7, 0.7, mudDk, "crate"); flat(c); c.parent = root; c.position.set(w * 0.2, h + 0.5, -d * 0.2); }
     return root;
   }
+  // taller multi-storey block (modern/mixed districts) with window rows
+  function tower(pos, w, d, h) {
+    const root = new B.TransformNode("tower", _scene);
+    root.position = pos.clone();
+    const tones = ["#b7a98f", "#a6927a", "#c2b59a", "#9c8f78"];
+    const wall = mat(tones[Math.floor(hash(pos.x, pos.z) * 4) % 4]);
+    const trim = mat("#7a6f5a"), glass = mat("#3b4a55", "#243038", 0.25);
+    const body = box(w, h, d, wall, "towerBody"); flat(body); body.parent = root; body.position.y = h / 2; body.checkCollisions = true;
+    const cap = box(w + 0.4, 0.4, d + 0.4, trim, "towerCap"); flat(cap); cap.parent = root; cap.position.y = h;
+    // window grid on the +Z and +X faces
+    const floors = Math.max(2, Math.floor(h / 1.6));
+    for (let f = 1; f < floors; f++) {
+      const y = (f / floors) * h;
+      for (let c = -1; c <= 1; c++) {
+        const wz = box(0.5, 0.6, 0.06, glass, "twWin"); flat(wz); wz.parent = root; wz.position.set(c * w * 0.3, y, d / 2 + 0.02);
+        const wx = box(0.06, 0.6, 0.5, glass, "twWin"); flat(wx); wx.parent = root; wx.position.set(w / 2 + 0.02, y, c * d * 0.3);
+      }
+    }
+    // small rooftop box (water tank / stair head)
+    const rb = box(w * 0.4, 0.8, d * 0.4, trim, "towerRoofBox"); flat(rb); rb.parent = root; rb.position.set(w * 0.1, h + 0.6, -d * 0.1);
+    return root;
+  }
   function stall(pos) {
     const root = new B.TransformNode("stall", _scene); root.position = pos.clone();
     const wood = mat("#7a5a32");
@@ -679,6 +715,6 @@
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
     flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall, jar, beacon,
-    weapon, arrow, weaponPickup, scroll, tree, flower, camel, lamppost, bench, serpent,
+    weapon, arrow, weaponPickup, scroll, tree, flower, camel, lamppost, bench, serpent, tower,
   };
 })(window);

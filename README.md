@@ -12,14 +12,17 @@ bigger world built from several connected zones:
   path across rolling dunes.
 - **The Temple** — an open-air pillared hall holding the interactive murals,
   puzzles and the boss arena.
-- **The Ancient City** — a west district of mud-brick homes, a market square
-  with stalls, a great house and a roadside shrine, where secrets are hidden.
+- **Five city districts** — the Ancient City plus a Northern Quarter, Eastern
+  Quarter, River Town and South Market. Each is a structured grid of mud-brick
+  homes and multi-storey towers around a stall-ringed plaza, with lamp-lined
+  avenues connecting them — the whole map is built up like a city plan, with
+  secrets hidden throughout.
 - **The Oasis** — a low-poly lake with palms, reeds and grass.
 - **Pyramid Horizon & Mountains** — pyramids, mesas and a mountain range.
 
 A **minimap** (top-right, click to enlarge) and a full **map** (`M`) show your
-location, the treasure, the secret scarabs, buildings and the oasis, with
-**fast‑travel** buttons to the Temple Gate, Temple Hall, Ancient City and Oasis.
+location, the treasure, the secret scarabs, every building and the oasis, with
+**fast‑travel** buttons to the temple and every city district.
 
 **Citizens** live in the city — a merchant, a high priest and a street child.
 Walk up and press **E** to talk; they share lore and hints. **Merchant Khufu**
@@ -76,7 +79,10 @@ The game is a static site with **no build step**.
 On launch you get a **HelaO2 Studio** intro, then the **main menu**
 (Continue / New Game / Settings / Credits) over a slowly orbiting view of the
 world. **Settings** (master volume, mute, look sensitivity, FOV, graphics
-quality, fog) apply live and are saved to `localStorage`. Press **Esc** in-game
+quality, **Visual Style: Stylized / Balanced / Realistic**, fog) apply live and
+are saved to `localStorage`. The Realistic style turns on sun shadows, FXAA,
+ACES tone mapping and colour grading; Stylized keeps the flat low-poly look.
+Press **Esc** in-game
 for the **pause menu** (Resume / Settings / Main Menu) and **I** for the
 **inventory**.
 
@@ -107,9 +113,25 @@ walk near one to collect it.
 | Photo mode (hide HUD) | `P` | — | — |
 | Attack (equipped weapon) | Click / `Space` | ⚔ button | A |
 | Switch weapon | `1` `2` `3` / `Q` | — | X (cycle) |
+| Cheat panel | `` ` `` (backquote) | — | — |
 
 Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
 (right side); a connected **gamepad** drives movement and look automatically.
+
+### Secret codes
+
+Just **type** these words while exploring (no menu needed):
+
+| Code | Effect |
+| --- | --- |
+| `camel` | Summon and **ride a camel** (faster travel; type `camel` again to dismount) |
+| `ankh` | Restore full vitality |
+| `ra` | Restore Ra's light in the temple |
+| `night` | Skip the time of day |
+| `khepri` | Reveal/collect every scarab |
+| `apophis` | Summon the serpent boss |
+| `smite` | Spawn a pack of shades |
+| `arsenal` | Grant all weapons |
 
 ### Combat & survival
 **Shades of the Duat** — floating wraiths with glowing eyes — roam the world,

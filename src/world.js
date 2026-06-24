@@ -29,6 +29,21 @@
     return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
   }
 
+  // city districts that fill the map — each is a flattened building quarter.
+  // (shared with the city builder below so geometry and terrain agree.)
+  const DISTRICTS = [
+    { name: "Ancient City",     x: -34, z: -6,  r: 24, cols: 5, rows: 5, kind: "ancient" },
+    { name: "Northern Quarter", x: 2,   z: 42,  r: 22, cols: 5, rows: 5, kind: "ancient" },
+    { name: "Eastern Quarter",  x: 46,  z: 34,  r: 20, cols: 4, rows: 4, kind: "mixed" },
+    { name: "River Town",       x: -46, z: 40,  r: 18, cols: 4, rows: 4, kind: "mixed" },
+    { name: "South Market",     x: -40, z: -40, r: 18, cols: 4, rows: 4, kind: "ancient" },
+  ];
+  // avenues connecting the quarters (flattened road corridors)
+  const ROADS = [
+    [-8, -22, -28, -8], [0, -12, 2, 26], [2, 26, 46, 30], [-28, -8, -46, 30],
+    [0, -32, -40, -40], [2, 26, 2, 42],
+  ];
+
   function makeHeightAt() {
     return function heightAt(x, z) {
       // rolling dunes
@@ -43,11 +58,10 @@
       h = h * smoothstep(4, 9, dPath); // flatten toward 0 near the path
       // oasis basin (east) sits slightly below ground for water
       h = flattenDisc(h, x, z, 38, -8, 16, -1.3);
-      // ancient city district (west) — flattened ground for the streets
-      h = flattenDisc(h, x, z, -34, -6, 24, 0);
-      // road from the plaza out to the city
-      const dRoad = segDist(x, z, -8, -22, -28, -8);
-      h = h * smoothstep(3, 8, dRoad);
+      // city districts — flattened ground for the streets
+      DISTRICTS.forEach((d) => { h = flattenDisc(h, x, z, d.x, d.z, d.r, 0); });
+      // roads between quarters
+      ROADS.forEach((r) => { h = h * smoothstep(3, 8, segDist(x, z, r[0], r[1], r[2], r[3])); });
       return h;
     };
   }
@@ -111,6 +125,7 @@
 
     // ---- terrain ----
     const dunes = LP.dunes(180, 90, heightAt);
+    dunes.receiveShadows = true;
 
     // ---- temple interior (origin). Walls = flat-shaded boxes, rotated so
     //      each wall's local X runs horizontally and local Z is the inward
@@ -149,7 +164,7 @@
 
     // temple floor slab (flat stone, slightly raised so it reads inside dunes)
     const slab = LP.box(ROOM.w + 1, 0.2, ROOM.d + 1, sandstoneDk, "slab");
-    LP.flat(slab); slab.position.set(0, 0.0, 0);
+    LP.flat(slab); slab.position.set(0, 0.0, 0); slab.receiveShadows = true;
 
     // pillars (two rows) with capitals
     const pillars = [];
@@ -303,7 +318,7 @@
     sand.emitRate = 700;
     sand.direction1 = new B.Vector3(8, 0.5, 2); sand.direction2 = new B.Vector3(12, 1.5, 4);
     sand.minEmitPower = 6; sand.maxEmitPower = 12;
-    const baseFog = scene.fogDensity;
+    let stormFogFloor = scene.fogDensity; // clear-weather fog floor (realism adjusts it)
     let storm = false, stormCd = 60 + Math.random() * 50, stormT = 0;
     function setSandstorm(on) {
       storm = on;
@@ -314,7 +329,7 @@
       const dt = Math.min(0.05, scene.getEngine().getDeltaTime() / 1000);
       if (scene.activeCamera) sandEmitter.position.copyFrom(scene.activeCamera.position);
       if (storm) { stormT -= dt; if (stormT <= 0) setSandstorm(false); scene.fogDensity = Math.min(0.05, scene.fogDensity + dt * 0.02); }
-      else { stormCd -= dt; if (stormCd <= 0) { stormCd = 70 + Math.random() * 60; setSandstorm(true); } scene.fogDensity = Math.max(baseFog, scene.fogDensity - dt * 0.02); }
+      else { stormCd -= dt; if (stormCd <= 0) { stormCd = 70 + Math.random() * 60; setSandstorm(true); } scene.fogDensity = Math.max(stormFogFloor, scene.fogDensity - dt * 0.02); }
     });
 
     // ---- shoreline foam ring around the oasis ----
@@ -366,34 +381,87 @@
     });
 
     // ============================================================
-    // ANCIENT CITY (west district) — a grid of homes, market & shrine
+    // CITY DISTRICTS — structured grids of blocks, streets & furniture
+    // (laid out like a modern city map: avenues, lit corners, plazas)
     // ============================================================
     const cityBuildings = [];
-    const CX = -34, CZ = -6;
-    function addHouse(x, z, w, d, h) {
-      LP.house(new B.Vector3(x, heightAt(x, z), z), w, d, h);
-      cityBuildings.push({ x, z, w, d });
-    }
-    for (let gx = -2; gx <= 2; gx++) {
-      for (let gz = -2; gz <= 2; gz++) {
-        if (Math.abs(gx) <= 0 && Math.abs(gz) <= 0) continue; // central market square
-        if (LP.hash(gx + 5, gz + 5) < 0.28) continue;          // gaps = streets/courtyards
-        const x = CX + gx * 7 + (LP.hash(gx, gz) - 0.5) * 1.6;
-        const z = CZ + gz * 7 + (LP.hash(gz, gx) - 0.5) * 1.6;
-        addHouse(x, z, 3.6 + LP.hash(gx, 1) * 2, 3.6 + LP.hash(gz, 2) * 2, 3 + LP.hash(gx, gz) * 2.6);
+    const modernTowers = [];      // taller blocks revealed/heightened in modern theme
+    function addHouse(x, z, w, d, h, kind) {
+      const seed = LP.hash(x * 1.3, z * 0.7);
+      if (kind === "mixed" && seed > 0.62) {
+        const th = h + 4 + seed * 6;
+        LP.tower(new B.Vector3(x, heightAt(x, z), z), w, d, th);
+        cityBuildings.push({ x, z, w, d });
+      } else {
+        LP.house(new B.Vector3(x, heightAt(x, z), z), w, d, h);
+        cityBuildings.push({ x, z, w, d });
       }
     }
-    // market stalls in the central square
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2;
-      LP.stall(new B.Vector3(CX + Math.cos(a) * 3.4, heightAt(CX, CZ), CZ + Math.sin(a) * 3.4));
+    // a structured district: a grid of blocks separated by streets, with a
+    // central plaza of market stalls, plus lamp-posts at street corners.
+    function buildDistrict(d) {
+      const span = (d.r - 4) * 2, step = span / d.cols;
+      const cx = d.x, cz = d.z;
+      for (let gx = 0; gx < d.cols; gx++) {
+        for (let gz = 0; gz < d.rows; gz++) {
+          const ox = cx - span / 2 + step * (gx + 0.5);
+          const oz = cz - span / 2 + step * (gz + 0.5);
+          const midX = (d.cols - 1) / 2, midZ = (d.rows - 1) / 2;
+          if (gx === Math.floor(midX) && gz === Math.floor(midZ)) continue; // central plaza
+          if (LP.hash(gx + cx, gz + cz) < 0.18) continue;                   // courtyards/gaps
+          const jitter = (step - 4.2);
+          const x = ox + (LP.hash(gx, gz) - 0.5) * Math.min(1.6, jitter);
+          const z = oz + (LP.hash(gz, gx) - 0.5) * Math.min(1.6, jitter);
+          const w = 3.4 + LP.hash(gx, 1) * 2.2, dp = 3.4 + LP.hash(gz, 2) * 2.2;
+          addHouse(x, z, w, dp, 3 + LP.hash(gx, gz) * 2.8, d.kind);
+        }
+      }
+      // central plaza: ring of market stalls
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        LP.stall(new B.Vector3(cx + Math.cos(a) * 3.4, heightAt(cx, cz), cz + Math.sin(a) * 3.4));
+      }
+      // lamp-posts at the four district corners (modern layer toggles their glow)
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach((c) => {
+        const lx = cx + c[0] * (d.r - 3), lz = cz + c[1] * (d.r - 3);
+        LP.lamppost(new B.Vector3(lx, heightAt(lx, lz), lz)).parent = modernLayer;
+      });
     }
-    // a "great house" / granary on the city edge
-    addHouse(CX - 13, CZ + 2, 7, 6, 6);
-    addHouse(CX + 2, CZ - 13, 6, 6, 5);
-    // small roadside shrine with two columns
+
+    // ---- collectible scarabs container declared up here for builders ----
+    // (built below; districts only need modernLayer which is created later)
+    const modernLayer = new B.TransformNode("modernLayer", scene); modernLayer.setEnabled(false);
+    const natureLayer = new B.TransformNode("natureLayer", scene); natureLayer.setEnabled(false);
+
+    DISTRICTS.forEach(buildDistrict);
+
+    // a "great house" / granary on the main city edge
+    const CX = -34, CZ = -6;
+    addHouse(CX - 15, CZ + 2, 7, 6, 6, "ancient");
+    addHouse(CX + 2, CZ - 15, 6, 6, 5, "ancient");
+    // small roadside shrine with two columns (on the temple→city avenue)
     [-1, 1].forEach((s) => { const c = LP.cyl(3.2, 0.5, 0.6, 8, sandstone, "shrineCol"); c.position.set(-18 + s * 1.6, 1.6, -14); c.checkCollisions = true; });
     const shrineRoof = LP.box(5, 0.5, 2.4, sandstoneDk, "shrineRoof"); LP.flat(shrineRoof); shrineRoof.position.set(-18, 3.3, -14);
+
+    // ---- street furniture lining the avenues (always present, fills space) ----
+    ROADS.forEach((r, ri) => {
+      const steps = 5;
+      for (let k = 1; k < steps; k++) {
+        const t = k / steps;
+        const mx = r[0] + (r[2] - r[0]) * t, mz = r[1] + (r[3] - r[1]) * t;
+        // perpendicular offset to sit beside the road, not on it
+        const dx = r[2] - r[0], dz = r[3] - r[1], len = Math.hypot(dx, dz) || 1;
+        const ox = (-dz / len) * 3.2, oz = (dx / len) * 3.2;
+        const side = (k % 2) ? 1 : -1;
+        const px = mx + ox * side, pz = mz + oz * side;
+        if (Math.hypot(px, pz) < 13) continue;             // keep temple clear
+        if (Math.hypot(px - 38, pz + 8) < 14) continue;    // keep oasis clear
+        const pick = LP.hash(ri * 7 + k, ri + 3);
+        if (pick < 0.4) LP.palmTree(new B.Vector3(px, heightAt(px, pz), pz), 1.0 + LP.hash(k, ri) * 0.5);
+        else if (pick < 0.7) LP.lamppost(new B.Vector3(px, heightAt(px, pz), pz)).parent = modernLayer;
+        else LP.bench(new B.Vector3(px, heightAt(px, pz), pz));
+      }
+    });
 
     // ---- collectible scarabs (hidden around the world) ----
     const scarabs = [];
@@ -443,8 +511,17 @@
     }
     const kinds = ["man", "man", "woman", "woman", "child", "child", "monk", "queen", "man", "woman"];
     kinds.forEach((k, i) => { const a = (i / kinds.length) * Math.PI * 2, r = 4 + LP.hash(i, 3) * 9; addCitizen(k, CX + Math.cos(a) * r, CZ + Math.sin(a) * r); });
-    // soldiers patrol the temple approach and city gate
+    // populate every other district too, so the whole map feels lived-in
+    const districtKinds = ["man", "woman", "child", "monk", "man", "woman"];
+    DISTRICTS.slice(1).forEach((d, di) => {
+      districtKinds.forEach((k, i) => {
+        const a = (i / districtKinds.length) * Math.PI * 2 + di, r = 4 + LP.hash(i + di, 3) * (d.r - 8);
+        addCitizen(k, d.x + Math.cos(a) * r, d.z + Math.sin(a) * r);
+      });
+    });
+    // soldiers patrol the temple approach, city gate & district plazas
     [[3, -20], [-3, -20], [-22, -6], [0, -8]].forEach((s) => addCitizen("soldier", s[0], s[1]));
+    DISTRICTS.slice(1).forEach((d) => addCitizen("soldier", d.x, d.z + 5));
 
     scene.onBeforeRenderObservable.add(() => {
       const dt = Math.min(0.05, scene.getEngine().getDeltaTime() / 1000);
@@ -493,9 +570,8 @@
 
     // ============================================================
     // THEME LAYERS — wild/nature & modern overlays toggled per mission
+    // (natureLayer / modernLayer were created earlier, near the districts)
     // ============================================================
-    const natureLayer = new B.TransformNode("natureLayer", scene); natureLayer.setEnabled(false);
-    const modernLayer = new B.TransformNode("modernLayer", scene); modernLayer.setEnabled(false);
     const free = (x, z) => Math.hypot(x - 38, z + 8) > 14 && Math.hypot(x, z) > 12; // skip oasis & temple
     // nature: trees, flowers, extra grass
     for (let i = 0; i < 28; i++) {
@@ -532,6 +608,39 @@
     [[-4, -22], [4, -22], [-4, -8], [4, -8], [-30, -6], [-38, -2]].forEach((p) => { LP.lamppost(new B.Vector3(p[0], heightAt(p[0], p[1]), p[1])).parent = modernLayer; });
     [[-2, -30], [2, -30], [-34, -2]].forEach((p) => { LP.bench(new B.Vector3(p[0], heightAt(p[0], p[1]), p[1])).parent = modernLayer; });
 
+    // ---- realism / graphics-style control (driven from the settings page) ----
+    // 'stylized' = the flat low-poly look; 'balanced' adds soft specular &
+    // thinner haze; 'realistic' adds sun shadows + crisper specular highlights.
+    let shadowGen = null;
+    function setRealism(level) {
+      const balanced = level === "balanced" || level === "realistic";
+      const realistic = level === "realistic";
+      // material response: matte for stylized, soft sheen otherwise
+      scene.materials.forEach((m) => {
+        if (!m.specularColor) return;
+        if (m.name === "shadeMat" || m.name === "foamMat") return; // keep FX flat
+        if (balanced) { m.specularColor = new B.Color3(0.13, 0.13, 0.13); m.specularPower = realistic ? 48 : 24; }
+        else { m.specularColor = new B.Color3(0, 0, 0); }
+      });
+      // a touch less haze as realism rises (storm logic clamps to this floor)
+      stormFogFloor = realistic ? 0.0055 : balanced ? 0.007 : 0.0085;
+      // sun shadows (opt-in; wrapped so an unsupported context can't break play)
+      try {
+        if (realistic) {
+          if (!shadowGen) {
+            shadowGen = new B.ShadowGenerator(1024, sunLight);
+            shadowGen.usePercentageCloserFiltering = true;
+            shadowGen.bias = 0.002; shadowGen.normalBias = 0.02;
+            scene.meshes.forEach((m) => {
+              if (m.name && /house|tower|pillar|cap|obelisk|sphinx|Jamb|lintel|backWall|leftWall|stall|tree|palm|hpart|hhead|camelBody|hump|neck|chead|cleg|bench|pole|shrine/i.test(m.name))
+                shadowGen.addShadowCaster(m, true);
+            });
+          }
+          sunLight.shadowEnabled = true;
+        } else if (shadowGen) { sunLight.shadowEnabled = false; }
+      } catch (e) { /* shadows unsupported here — ignore */ }
+    }
+
     function setTheme(name) {
       const dm = dunes.material;
       if (name === "wild") { dm.diffuseColor = B.Color3.FromHexString("#a9dd86"); natureLayer.setEnabled(true); modernLayer.setEnabled(false); hemi.diffuse = B.Color3.FromHexString("#cfe6c0"); }
@@ -548,8 +657,8 @@
 
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
              boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings, jars,
-             citizens, weaponPickups, scrolls,
-             sky, setSandstorm, isStorm: () => storm, setTheme, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
+             citizens, weaponPickups, scrolls, districts: DISTRICTS,
+             sky, setSandstorm, isStorm: () => storm, setTheme, setRealism, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
              timeLabel: () => { const e = Math.sin(sky.t * Math.PI * 2); return e > 0.35 ? "Day" : e > -0.1 ? "Dusk" : e > -0.6 ? "Night" : "Midnight"; },
              oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };
   }

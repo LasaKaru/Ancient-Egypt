@@ -39,6 +39,7 @@
     setVolume: $("setVolume"), setVolumeVal: $("setVolumeVal"), setMute: $("setMute"),
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
     setQuality: $("setQuality"), setFog: $("setFog"), setMusic: $("setMusic"),
+    setRealism: $("setRealism"),
     setDifficulty: $("setDifficulty"), setReduced: $("setReduced"), potionHud: $("potionHud"),
     weaponHud: $("weaponHud"), weaponName: $("weaponName"), weaponKeys: $("weaponKeys"),
     codex: $("codex"), codexList: $("codexList"), btnCodexClose: $("btnCodexClose"), clockHud: $("clockHud"),
@@ -124,6 +125,7 @@
     bossProps: [],
     boss: null,
     serpent: null, serpentDefeated: false,
+    mount: null, secretBuf: "",
     treasure: null,
     enemies: [],
     npcs: [],
@@ -1470,9 +1472,10 @@
   const LOCATIONS = [
     { name: "Temple Gate", x: 0, z: -30 },
     { name: "Temple Hall", x: 0, z: 0 },
-    { name: "Ancient City", x: -34, z: -6 },
     { name: "Oasis", x: 34, z: -6 },
   ];
+  // add every city district as a fast-travel / map location
+  (world.districts || []).forEach((d) => LOCATIONS.push({ name: d.name, x: d.x, z: d.z }));
   const miniCtx = dom.minimap.getContext("2d");
   function drawWorldMap(ctx, size, range, cx, cz, showScarabs) {
     const sc = size / (2 * range);
@@ -1690,6 +1693,11 @@
     if (!state.started) return;
     const k = e.key.toLowerCase();
     if (state.dialogue) { if (e.key === "Escape") closeDialogue(); return; }
+    // secret codes: capture letters; while typing a known code, swallow the key
+    if (state.mode !== "2d" && /^[a-z]$/.test(k)) {
+      const r = handleSecretKey(k);
+      if (r === "done" || r === "typing") return;
+    }
     if (k === "i" && state.mode !== "2d") { toggleInventory(); return; }
     if (k === "m" && state.mode !== "2d") { toggleMap(); return; }
     if (k === "j" && state.mode !== "2d") { toggleQuests(); return; }
@@ -1815,10 +1823,65 @@
   }
 
   // ============================================================
+  // SECRET CODES (type the word in-game) + RIDEABLE CAMEL
+  // ============================================================
+  function rideCamel() {
+    if (state.mount) { dismountCamel(); return; }
+    const c = LP.camel(camera.position.clone());
+    state.mount = { root: c, prevSpeed: camera.speed };
+    camera.speed = 0.82;                       // camels are swift across the dunes
+    Sound.success();
+    toast("🐪 You mount a camel! Ride with WASD — type ‘camel’ again to dismount.", 3200);
+  }
+  function dismountCamel() {
+    if (!state.mount) return;
+    camera.speed = state.mount.prevSpeed || 0.42;
+    state.mount.root.dispose();
+    state.mount = null;
+    toast("You dismount.", 1400);
+  }
+  function updateMount() {
+    if (!state.mount) return;
+    const r = state.mount.root;
+    r.position.x = camera.position.x;
+    r.position.z = camera.position.z;
+    r.position.y = heightAt(camera.position.x, camera.position.z);
+    r.rotation.y = camera.rotation.y - Math.PI / 2; // camel faces +X; align to view
+  }
+
+  const SECRETS = {
+    camel:  { msg: "secret: CAMEL", fn: rideCamel },
+    ankh:   { msg: "secret: full vitality restored", fn: () => { state.health = state.maxHealth; updateHealthHud(); Sound.success(); } },
+    ra:     { msg: "secret: Ra's light returns", fn: () => { if (!state.objectives.light) { lightTemple(); state.objectives.light = true; renderObjectives(); } } },
+    night:  { msg: "secret: the hours turn", fn: () => { world.skipTime(); } },
+    khepri: { msg: "secret: every scarab revealed", fn: () => { world.scarabs.forEach((s) => { if (!s.collected) { s.collected = true; s.root.setEnabled(false); } }); updateScarabHud(); renderObjectives(); } },
+    apophis:{ msg: "secret: the serpent of chaos rises", fn: () => { startSerpent(); } },
+    smite:  { msg: "secret: shades gather", fn: () => { spawnEnemies(); } },
+    arsenal:{ msg: "secret: the armoury opens", fn: () => { ["spear", "bow"].forEach(ownWeapon); } },
+  };
+  // returns 'done' (a code fired), 'typing' (mid-code, suppress shortcuts),
+  // or 'none' (let the keypress fall through to its normal shortcut)
+  function handleSecretKey(ch) {
+    const codes = Object.keys(SECRETS);
+    let buf = state.secretBuf + ch;
+    // keep only the longest suffix that is still a prefix of some code
+    while (buf.length && !codes.some((c) => c.startsWith(buf))) buf = buf.slice(1);
+    state.secretBuf = buf;
+    if (SECRETS[buf]) {
+      state.secretBuf = "";
+      if (currentOverlay) closeOverlay();   // tidy any panel the lead letter opened
+      toast(SECRETS[buf].msg, 1800);
+      try { SECRETS[buf].fn(); } catch (e) {}
+      return "done";
+    }
+    return buf.length >= 2 ? "typing" : "none";
+  }
+
+  // ============================================================
   // RENDER LOOP
   // ============================================================
   function groundCamera() {
-    camera.position.y = heightAt(camera.position.x, camera.position.z) + EYE;
+    camera.position.y = heightAt(camera.position.x, camera.position.z) + EYE + (state.mount ? 1.35 : 0);
   }
   let lastT = performance.now();
   engine.runRenderLoop(() => {
@@ -1836,6 +1899,7 @@
     if (state.mode === "2d") { update2D(dt); return; }
 
     groundCamera();
+    updateMount();
     regen(dt);
     updateWaypoint();
     updateMinimap();
@@ -1876,7 +1940,7 @@
   // SETTINGS (persisted to localStorage, applied live)
   // ============================================================
   const SETTINGS_KEY = "wotf_settings";
-  const defaults = { volume: 70, mute: false, sensLevel: 6, fovDeg: 75, quality: "high", fog: true, music: true, difficulty: "normal", reducedMotion: false };
+  const defaults = { volume: 70, mute: false, sensLevel: 6, fovDeg: 75, quality: "high", fog: true, music: true, realism: "balanced", difficulty: "normal", reducedMotion: false };
   const ENEMY_DMG = { story: 4, normal: 8, hard: 14 };
   let settings = Object.assign({}, defaults, loadSettings());
 
@@ -1900,7 +1964,29 @@
     const fx = q !== "low";
     if (world.dust) { fx ? world.dust.start() : world.dust.stop(); }
     if (world.godRays) world.godRays.forEach((m) => m.setEnabled(fx));
-    setupPostFX(q === "high");
+    applyRealism(settings.realism);
+  }
+  // graphics-style: 'stylized' (flat low-poly) | 'balanced' | 'realistic'
+  function applyRealism(level) {
+    state.realism = level;
+    const on = level !== "stylized";
+    setupPostFX(on || settings.quality === "high");
+    if (pipe) {
+      try {
+        pipe.fxaaEnabled = on;
+        pipe.samples = on ? 4 : 1;
+        pipe.sharpenEnabled = on;
+        pipe.imageProcessing.toneMappingEnabled = level === "realistic";
+        if (B.ImageProcessingConfiguration && pipe.imageProcessing.toneMappingType !== undefined)
+          pipe.imageProcessing.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
+        pipe.imageProcessing.contrast = level === "realistic" ? 1.25 : 1.12;
+        pipe.imageProcessing.exposure = level === "realistic" ? 1.08 : 1.02;
+        pipe.bloomWeight = level === "realistic" ? 0.5 : 0.38;
+        pipe.grainEnabled = level === "realistic";
+        if (pipe.grain) pipe.grain.intensity = 5;
+      } catch (e) {}
+    }
+    if (world.setRealism) world.setRealism(level);
   }
   function applySettings() {
     camera.angularSensibility = 5500 - settings.sensLevel * 450;
@@ -1921,6 +2007,7 @@
     dom.setQuality.value = settings.quality;
     dom.setFog.checked = settings.fog;
     dom.setMusic.checked = settings.music;
+    if (dom.setRealism) dom.setRealism.value = settings.realism;
     dom.setDifficulty.value = settings.difficulty;
     dom.setReduced.checked = settings.reducedMotion;
   }
@@ -1931,6 +2018,7 @@
   dom.setQuality.addEventListener("change", () => { settings.quality = dom.setQuality.value; applySettings(); saveSettings(); });
   dom.setFog.addEventListener("change", () => { settings.fog = dom.setFog.checked; applySettings(); saveSettings(); });
   dom.setMusic.addEventListener("change", () => { settings.music = dom.setMusic.checked; applySettings(); saveSettings(); });
+  if (dom.setRealism) dom.setRealism.addEventListener("change", () => { settings.realism = dom.setRealism.value; applyRealism(settings.realism); saveSettings(); toast("Graphics: " + dom.setRealism.options[dom.setRealism.selectedIndex].text, 1400); });
   dom.setDifficulty.addEventListener("change", () => { settings.difficulty = dom.setDifficulty.value; applySettings(); saveSettings(); });
   dom.setReduced.addEventListener("change", () => { settings.reducedMotion = dom.setReduced.checked; applySettings(); saveSettings(); });
 

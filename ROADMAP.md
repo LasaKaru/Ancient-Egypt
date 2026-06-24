@@ -25,6 +25,8 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - Peel-off animation → low-poly 3D companions that follow you
 - Three-phase Anubis boss (3D → 2D fresco weak-spot → enraged 3D), health bar
 - Low-poly multi-zone world: desert gate, temple hall, oasis, pyramid horizon
+- Five structured city districts (grids of houses + multi-storey towers, plazas,
+  market stalls, lamp-lined avenues) that fill the map, shown on the world map
 - God-ray shafts, dust motes, dusk gradient sky, flickering torches/candles
 - Procedural canvas art + procedural Web Audio (no binary assets)
 - Objectives HUD, toasts, crosshair, mobile touch controls
@@ -122,12 +124,12 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 
 ## 12. Visuals & realism
 - [ ] **PBR materials & better lighting** (L) — move from StandardMaterial to PBR where it helps; keep stylized look.
-- [ ] **Shadows** (M) — shadow maps for sun/torches.
-- [~] **Post-processing** (M) — bloom + vignette via DefaultRenderingPipeline (on at High quality). ✅ Color grading, SSAO, DoF, true volumetric god-rays still TBD.
+- [x] **Shadows** (M) — sun shadow maps (PCF) on buildings/people/props, enabled in the Realistic visual style. ✅ (torch shadows TBD)
+- [~] **Post-processing** (M) — bloom + vignette via DefaultRenderingPipeline; Realistic style adds FXAA, sharpen, ACES tone mapping, contrast/exposure grading & film grain. ✅ SSAO, DoF, true volumetric god-rays still TBD.
 - [x] **Particle upgrades** — torch embers + sandstorm sand drift. ✅ (splashes/wisps TBD)
 - [ ] **Decals & weathering** (M) — cracks, moss, sand piles.
 - [ ] **LOD & impostors** (M) — for distant pyramids/mountains.
-- [ ] **Higher-detail art option** (L) — optional asset pack for a "more realistic" mode (toggle low-poly ⇄ detailed).
+- [x] **Visual-style option** — Settings → Visual Style: Stylized / Balanced / Realistic (specular, haze, shadows, grading). ✅
 - [ ] **Animated water/cloth/foliage** (M).
 
 ## 13. Controls & accessibility
@@ -171,7 +173,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Camera transitions** (S) — smooth 3D⇄2D blends, boss intro cams.
 - [ ] **UI animations & sound feedback** (S).
 - [ ] **Haptics on mobile/gamepad** (S).
-- [ ] **Seasonal/easter-egg content** (S).
+- [x] **Secret codes / easter eggs** — type words in-game (camel→ride a camel, ankh, ra, night, khepri, apophis, smite, arsenal). ✅
 
 ---
 
