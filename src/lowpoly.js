@@ -528,6 +528,24 @@
     return { root, col, eyeMat };
   }
 
+  // ---------- 2nd boss: Apophis the serpent (segmented) ----------
+  function serpent() {
+    const dark = mat("#1f3a2a"), scaleM = mat("#2f6f4a", "#0c3a22", 0.3), belly = mat("#7aa36a");
+    const eyeMat = mat("#ff5b3b", "#ff2a10", 1.7);
+    const segs = [], N = 10;
+    for (let i = 0; i < N; i++) {
+      const d = i === 0 ? 1.5 : Math.max(0.5, 1.25 - i * 0.07);
+      const s = lowSphere(d, 1, i === 0 ? dark : scaleM, "serpSeg");
+      segs.push(s);
+    }
+    const head = segs[0];
+    const jaw = box(0.85, 0.32, 1.1, dark, "serpJaw"); flat(jaw); jaw.parent = head; jaw.position.set(0, -0.25, 0.75);
+    const tongue = box(0.08, 0.06, 0.5, mat("#bb3b22"), "serpTongue"); flat(tongue); tongue.parent = head; tongue.position.set(0, -0.2, 1.2);
+    [-0.32, 0.32].forEach((x) => { const e = box(0.2, 0.22, 0.14, eyeMat, "serpEye"); e.parent = head; e.position.set(x, 0.34, 0.55); });
+    const col = box(1.8, 1.8, 2.0, undefined, "serpCol"); col.parent = head; col.visibility = 0; col.isPickable = true; col.metadata = { serpentHit: true };
+    return { segs, head, eyeMat, col };
+  }
+
   // ---------- pharaoh's treasure (golden sarcophagus) ----------
   function treasure(pos) {
     const root = new B.TransformNode("treasure", _scene);
@@ -661,6 +679,6 @@
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
     flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall, jar, beacon,
-    weapon, arrow, weaponPickup, scroll, tree, flower, camel, lamppost, bench,
+    weapon, arrow, weaponPickup, scroll, tree, flower, camel, lamppost, bench, serpent,
   };
 })(window);

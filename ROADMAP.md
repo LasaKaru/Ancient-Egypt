@@ -54,7 +54,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Mountains & rock formations** (M) — low-poly mountain meshes, mesas, layered cliffs, scree fields of **stones/boulders**.
 - [~] **Better water** — animated ripples + oasis foam ring ✅; reflective shader / Nile / waterfalls TBD.
 - [ ] **Rocks & props variety** (S) — more rock/cactus/plant variants, broken columns, statues, sphinxes, urns, braziers.
-- [x] **Level / world structure** — a 25-mission campaign with a level-select screen and sequential unlocks over the open world. ✅
+- [x] **Level / world structure** — a 26-mission campaign with a level-select screen and sequential unlocks over the open world. ✅
 - [ ] **Procedural scatter / variation** (M) — seeded placement so each zone feels rich but performant.
 - [~] **Day/night cycle + weather** — sun/sky/fog day→night (T to skip) ✅; periodic sandstorms ✅; rain TBD.
 - [ ] **Interactive environment** (M) — destructible pots, movable blocks, pressure plates, rope/pulley puzzles.
@@ -77,7 +77,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 
 ## 6. Combat & bosses
 - [~] **Combat depth** — melee (khopesh/spear) + ranged (bow arrows) vs. shades & boss; dodge/combos TBD.
-- [ ] **More bosses** (XL) — a spider-guardian, a serpent (Apophis), a sphinx riddle-boss; each with a unique 2D/3D gimmick.
+- [~] **More bosses** (XL) — Apophis the serpent (segmented chain body, weave + telegraphed lunge, head weak-spot, dedicated mission + Spawn-Serpent cheat) is in. ✅ Spider-guardian & sphinx riddle-boss still TBD.
 - [x] **Boss telegraphs & dodgeable attacks** — Anubis emits a telegraphed ground shockwave you must back away from. ✅
 - [ ] **Enemy variety & spawning** (M).
 - [x] **Difficulty modes** — Story / Normal / Hard scale enemy damage (Settings). ✅
@@ -123,7 +123,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 ## 12. Visuals & realism
 - [ ] **PBR materials & better lighting** (L) — move from StandardMaterial to PBR where it helps; keep stylized look.
 - [ ] **Shadows** (M) — shadow maps for sun/torches.
-- [ ] **Post-processing** (M) — bloom, color grading, vignette, SSAO, depth of field, true volumetric god-rays.
+- [~] **Post-processing** (M) — bloom + vignette via DefaultRenderingPipeline (on at High quality). ✅ Color grading, SSAO, DoF, true volumetric god-rays still TBD.
 - [x] **Particle upgrades** — torch embers + sandstorm sand drift. ✅ (splashes/wisps TBD)
 - [ ] **Decals & weathering** (M) — cracks, moss, sand piles.
 - [ ] **LOD & impostors** (M) — for distant pyramids/mountains.

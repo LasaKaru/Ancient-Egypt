@@ -123,6 +123,7 @@
     companions: [],
     bossProps: [],
     boss: null,
+    serpent: null, serpentDefeated: false,
     treasure: null,
     enemies: [],
     npcs: [],
@@ -689,6 +690,164 @@
   }
 
   // ============================================================
+  // SECOND BOSS — APOPHIS, THE SERPENT OF CHAOS
+  // ============================================================
+  const SERP_EYE = B.Color3.FromHexString("#ff5b3b").scale(1.7);
+  const SERP_TELE = B.Color3.FromHexString("#fff0a0").scale(2.2);
+
+  function startSerpent() {
+    if (state.serpent) return;
+    Sound.bossRoar(); Sound.setBossMode(true);
+    state.serpentDefeated = false;
+    const s = LP.serpent();
+    // place the coiled serpent out by the oasis basin so there is room to weave
+    const ox = world.oasis ? world.oasis.x : 0, oz = world.oasis ? world.oasis.z : 8;
+    const cx = ox, cz = oz;
+    s.head.position.set(cx, heightAt(cx, cz) + 1.4, cz);
+    s.segs.forEach((seg, i) => { if (i > 0) seg.position.set(cx, heightAt(cx, cz) + 1.4, cz - i * 1.1); });
+    const maxHp = 18;
+    state.serpent = {
+      s, hp: maxHp, maxHp, t: 0, hitCd: 0,
+      lungeCd: 4.0, phase: "weave", phaseT: 0,
+      center: new B.Vector3(cx, 0, cz), angle: Math.random() * Math.PI * 2,
+      trail: [], lungeDir: null,
+    };
+    // seed the trail so segments start strung out behind the head
+    for (let k = 0; k < 60; k++) state.serpent.trail.push(s.head.position.clone());
+    world.hemi.intensity = 0.34;
+    dom.bossBar.querySelector(".label").textContent = "Apophis · Serpent of Chaos";
+    dom.bossBar.style.display = "block";
+    dom.bossFill.style.width = "100%";
+    state.mode = "3d";
+    toast("APOPHIS, THE SERPENT OF CHAOS, RISES", 2800);
+    setInstr(isTouch ? "Strike the serpent's head when it lunges — tap ⚔!"
+                     : "Strike the serpent's head with your weapon (click/SPACE / bow)!");
+    if (!isTouch && document.pointerLockElement !== canvas) canvas.requestPointerLock();
+  }
+
+  function serpentBar() {
+    const sp = state.serpent; if (!sp) return;
+    dom.bossFill.style.width = Math.max(0, (sp.hp / sp.maxHp) * 100) + "%";
+  }
+
+  function flashSerpentEyes(col) {
+    const sp = state.serpent; if (!sp) return;
+    sp.s.eyeMat.emissiveColor = col.clone();
+  }
+
+  function strikeSerpent() {
+    const sp = state.serpent; if (!sp || sp.hitCd > 0) return;
+    const head = sp.s.head;
+    if (B.Vector3.Distance(camera.position, head.position) > (state.weapon === "spear" ? 8 : 6)) {
+      setInstr("Get closer to strike the serpent!"); return;
+    }
+    const pick = scene.pickWithRay(camera.getForwardRay(10), (m) => m.metadata && m.metadata.serpentHit);
+    if (!pick.hit) { setInstr("Aim at the serpent's head!"); return; }
+    damageSerpent(1);
+  }
+
+  function damageSerpent(n) {
+    const sp = state.serpent; if (!sp) return;
+    sp.hp -= n; sp.hitCd = 0.3; Sound.hit(); shake(); serpentBar();
+    flashSerpentEyes(SERP_TELE);
+    setTimeout(() => { if (state.serpent) flashSerpentEyes(SERP_EYE); }, 90);
+    if (sp.hp <= 0) defeatSerpent();
+  }
+
+  function defeatSerpent() {
+    const sp = state.serpent; Sound.bossDown(); Sound.setBossMode(false);
+    state.serpentDefeated = true;
+    toast("APOPHIS IS UNMADE — CHAOS RECEDES", 3200);
+    dom.bossBar.style.display = "none";
+    dom.bossBar.querySelector(".label").textContent = "Anubis · Guardian of the Dead";
+    const startT = performance.now();
+    const segs = sp.s.segs;
+    const anim = () => {
+      const k = Math.min(1, (performance.now() - startT) / 1400);
+      segs.forEach((seg, i) => {
+        const kk = Math.max(0, Math.min(1, k * 1.4 - i * 0.04));
+        seg.scaling.setAll(1 - kk);
+        seg.position.y += 0.04 * (1 - kk);
+      });
+      if (k < 1) requestAnimationFrame(anim);
+      else {
+        segs.forEach((seg) => seg.dispose());
+        world.hemi.intensity = 0.8;
+        state.serpent = null;
+        Sound.success();
+        setInstr("The waters still. The serpent of chaos is no more.");
+        saveGame();
+      }
+    };
+    anim();
+  }
+
+  function serpentLunge() {
+    const sp = state.serpent; if (!sp) return;
+    sp.phase = "telegraph"; sp.phaseT = 0;
+    flashSerpentEyes(SERP_TELE);
+    Sound.bossRoar();
+  }
+
+  function updateSerpent(dt) {
+    const sp = state.serpent; if (!sp) return;
+    sp.t += dt; sp.hitCd = Math.max(0, sp.hitCd - dt);
+    const head = sp.s.head;
+
+    if (sp.phase === "weave") {
+      // orbit the player, weaving in and out
+      sp.angle += dt * 0.9;
+      const px = camera.position.x, pz = camera.position.z;
+      const radius = 7 + Math.sin(sp.t * 1.3) * 2.5;
+      const tx = px + Math.cos(sp.angle) * radius;
+      const tz = pz + Math.sin(sp.angle) * radius;
+      const ty = heightAt(tx, tz) + 1.4 + Math.sin(sp.t * 3) * 0.5;
+      head.position.x += (tx - head.position.x) * Math.min(1, dt * 1.8);
+      head.position.z += (tz - head.position.z) * Math.min(1, dt * 1.8);
+      head.position.y += (ty - head.position.y) * Math.min(1, dt * 3);
+      sp.lungeCd -= dt;
+      if (sp.lungeCd <= 0) { sp.lungeCd = 4.5 + Math.random() * 2.5; serpentLunge(); }
+    } else if (sp.phase === "telegraph") {
+      sp.phaseT += dt;
+      // rear back slightly, eyes glow, then strike
+      head.position.y += dt * 1.2;
+      if (sp.phaseT > 0.7) {
+        sp.phase = "lunge"; sp.phaseT = 0;
+        flashSerpentEyes(SERP_EYE);
+        const d = camera.position.subtract(head.position); d.normalize();
+        sp.lungeDir = d;
+      }
+    } else if (sp.phase === "lunge") {
+      sp.phaseT += dt;
+      head.position.addInPlace(sp.lungeDir.scale(dt * 26));
+      if (B.Vector3.Distance(head.position, camera.position) < 2.4) {
+        damagePlayer(14); sp.phase = "recover"; sp.phaseT = 0;
+      } else if (sp.phaseT > 0.55) { sp.phase = "recover"; sp.phaseT = 0; }
+    } else if (sp.phase === "recover") {
+      sp.phaseT += dt;
+      if (sp.phaseT > 0.8) sp.phase = "weave";
+    }
+
+    // face direction of motion
+    sp.trail.unshift(head.position.clone());
+    if (sp.trail.length > 80) sp.trail.pop();
+    const ahead = sp.trail[Math.min(4, sp.trail.length - 1)];
+    const dir = head.position.subtract(ahead);
+    if (dir.lengthSquared() > 0.0001) head.rotation.y = Math.atan2(dir.x, dir.z);
+
+    // body segments follow the head's position history (a chain)
+    const spacing = 6; // trail samples between segments
+    for (let i = 1; i < sp.s.segs.length; i++) {
+      const idx = Math.min(i * spacing, sp.trail.length - 1);
+      const target = sp.trail[idx];
+      const seg = sp.s.segs[i];
+      seg.position.x += (target.x - seg.position.x) * Math.min(1, dt * 12);
+      seg.position.y += (target.y - seg.position.y) * Math.min(1, dt * 12);
+      seg.position.z += (target.z - seg.position.z) * Math.min(1, dt * 12);
+    }
+  }
+
+  // ============================================================
   // TREASURE + VICTORY
   // ============================================================
   function spawnTreasure() {
@@ -828,6 +987,7 @@
     if (state.mode === "2d" || state.paused || state.dialogue) return;
     if (state.weapon === "bow") { fireArrow(); return; }
     if (state.mode === "boss") { hitBoss(); return; }
+    if (state.serpent) { strikeSerpent(); return; }
     strikeMelee();
   }
   function strikeMelee() {
@@ -863,6 +1023,11 @@
       if (!hit && b && b.g && !b.transitioning && b.hitCd <= 0 && (b.phase === 1 || b.phase === 3) &&
           B.Vector3.Distance(ar.root.position, b.g.root.position.add(new B.Vector3(0, 2, 0))) < 2.6) {
         damageBoss(); flashEyes(); hit = true;
+      }
+      const sp = state.serpent;
+      if (!hit && sp && sp.hitCd <= 0 &&
+          B.Vector3.Distance(ar.root.position, sp.s.head.position) < 2.0) {
+        damageSerpent(1); hit = true;
       }
       if (hit || ar.t > 2.6) { ar.root.dispose(); state.arrows.splice(i, 1); }
     }
@@ -929,6 +1094,7 @@
     { t: "Master of Arms", h: "Wield all three weapons.", g: { type: "weaponsAll" } },
     { t: "The Full Hunt", h: "Every scarab, every scroll.", g: { type: "huntAll" } },
     { t: "Streets of the Modern City", h: "Under new lamplight, the dark still swarms.", g: { type: "shades", n: 15 }, theme: "modern" },
+    { t: "The Serpent of Chaos", h: "Apophis stirs in the deep waters — only steel and arrow can unmake it.", g: { type: "serpent" } },
     { t: "Champion of the Two Worlds", h: "Fulfil the pharaoh's destiny.", g: { type: "all" } },
   ];
   let missionsUnlocked = new Set([0]), missionsDone = new Set();
@@ -956,6 +1122,7 @@
       case "storm": return S.stormSurvived;
       case "zonesAll": return S.zonesVisited.size >= 4;
       case "huntAll": return collectedScarabs() >= world.scarabs.length && state.codex.length >= world.scrolls.length;
+      case "serpent": return state.serpentDefeated;
       case "all": return state.objectives.door && state.objectives.light && state.objectives.barque && state.objectives.boss;
       default: return false;
     }
@@ -978,6 +1145,7 @@
       case "storm": return "Survive a sandstorm";
       case "zonesAll": return "Visit all 4 regions (" + S.zonesVisited.size + "/4)";
       case "huntAll": return "Collect all scarabs & scrolls";
+      case "serpent": return "Defeat Apophis, the serpent of chaos";
       case "all": return "Complete the whole pilgrimage";
       default: return "";
     }
@@ -994,6 +1162,7 @@
     updateMissionBanner();
     toast("Mission " + (i + 1) + ": " + MISSIONS[i].t, 2600);
     if (currentOverlay === "missions") closeOverlay();
+    if (MISSIONS[i].g.type === "serpent") { state.serpentDefeated = false; if (state.started) startSerpent(); }
   }
   function completeMission() {
     const i = state.mission;
@@ -1132,6 +1301,7 @@
     ["Theme: Ancient", () => { world.setTheme("ancient"); }],
     ["Skip Time", () => { world.skipTime(); }],
     ["Spawn Shades", () => { spawnEnemies(); }],
+    ["Spawn Serpent", () => { startSerpent(); }],
   ];
   function renderCheats() {
     dom.cheatGrid.innerHTML = "";
@@ -1681,6 +1851,7 @@
     if (state.mission >= 0) updateMissionBanner();
     dom.clockHud.textContent = "· " + world.timeLabel();
     if (state.mode === "boss") { updateBoss(dt); return; }
+    if (state.serpent) updateSerpent(dt);
     updateEnemies(dt);
     updateNPCs(dt);
 
@@ -1712,11 +1883,24 @@
   function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; } }
   function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
 
+  let pipe = null;
+  function setupPostFX(on) {
+    try {
+      if (on && !pipe) {
+        pipe = new B.DefaultRenderingPipeline("wotfPipe", true, scene, [menuCam, camera]);
+        pipe.bloomEnabled = true; pipe.bloomThreshold = 0.72; pipe.bloomWeight = 0.45; pipe.bloomScale = 0.5;
+        pipe.imageProcessingEnabled = true;
+        pipe.imageProcessing.vignetteEnabled = true; pipe.imageProcessing.vignetteWeight = 2.4;
+        pipe.imageProcessing.contrast = 1.1; pipe.imageProcessing.exposure = 1.02;
+      } else if (!on && pipe) { pipe.dispose(); pipe = null; }
+    } catch (e) { pipe = null; }
+  }
   function applyQuality(q) {
     engine.setHardwareScalingLevel(q === "low" ? 1.7 : q === "medium" ? 1.3 : 1.0);
     const fx = q !== "low";
     if (world.dust) { fx ? world.dust.start() : world.dust.stop(); }
     if (world.godRays) world.godRays.forEach((m) => m.setEnabled(fx));
+    setupPostFX(q === "high");
   }
   function applySettings() {
     camera.angularSensibility = 5500 - settings.sensLevel * 450;

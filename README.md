@@ -130,10 +130,11 @@ hits zero you respawn at the gate.
 
 ## Missions (campaign)
 
-Beyond free roam, there's a **25-mission campaign** (menu → **MISSIONS**, or `L`
+Beyond free roam, there's a **26-mission campaign** (menu → **MISSIONS**, or `L`
 in-game). Each mission has a distinct objective and a "curious" hook — reach a
 place, solve a fresco, hunt scarabs, banish shades, talk to citizens, find lore,
-survive a sandstorm, master the weapons, defeat Anubis, and more. Missions
+survive a sandstorm, master the weapons, defeat Anubis, slay **Apophis the
+serpent of chaos**, and more. Missions
 **unlock in sequence** as you complete them (progress saved), and the active
 mission's objective + progress shows in a banner.
 
