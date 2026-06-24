@@ -42,6 +42,8 @@
     setDifficulty: $("setDifficulty"), setReduced: $("setReduced"), potionHud: $("potionHud"),
     weaponHud: $("weaponHud"), weaponName: $("weaponName"), weaponKeys: $("weaponKeys"),
     codex: $("codex"), codexList: $("codexList"), btnCodexClose: $("btnCodexClose"), clockHud: $("clockHud"),
+    btnMissions: $("btnMissions"), missions: $("missions"), missionsGrid: $("missionsGrid"),
+    missionsProgress: $("missionsProgress"), btnMissionsClose: $("btnMissionsClose"), missionBanner: $("missionBanner"),
     quests: $("quests"), questMain: $("questMain"), questSide: $("questSide"), btnQuestsClose: $("btnQuestsClose"),
   };
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -127,6 +129,8 @@
     potions: 0, photo: false, enemyDamage: 8, reducedMotion: false,
     weapons: ["khopesh"], weapon: "khopesh", arrows: [],
     codex: [],
+    mission: -1,
+    stats: { shadesBanished: 0, arrowKills: 0, potionsUsed: 0, missionTime: 0, stormSurvived: false, npcsTalked: new Set(), zonesVisited: new Set() },
     health: 100, maxHealth: 100, lastHit: 0,
     objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
@@ -782,7 +786,7 @@
   function usePotion() {
     if (state.potions <= 0) { toast("No water jars left.", 1200); return; }
     if (state.health >= state.maxHealth) { toast("Vitality already full.", 1200); return; }
-    state.potions--; state.health = Math.min(state.maxHealth, state.health + 45);
+    state.potions--; state.stats.potionsUsed++; state.health = Math.min(state.maxHealth, state.health + 45);
     updateHealthHud(); Sound.success(); toast("You drink — vitality restored.", 1400); saveGame();
   }
   // ============================================================
@@ -831,7 +835,7 @@
     const e = state.enemies.find((x) => x.sh.col === pick.pickedMesh);
     if (!e) return;
     e.hp -= 2; Sound.hit(); shake(); e.sh.root.scaling.scaleInPlace(0.9);
-    if (e.hp <= 0) { Sound.unwhoosh(); e.sh.root.dispose(); state.enemies = state.enemies.filter((x) => x !== e); toast("A shade is banished!", 1200); }
+    if (e.hp <= 0) { Sound.unwhoosh(); e.sh.root.dispose(); state.enemies = state.enemies.filter((x) => x !== e); state.stats.shadesBanished++; toast("A shade is banished!", 1200); }
   }
   function fireArrow() {
     const a = LP.arrow();
@@ -849,7 +853,7 @@
       for (const e of state.enemies) {
         if (B.Vector3.Distance(ar.root.position, e.sh.root.position.add(new B.Vector3(0, 1, 0))) < 1.3) {
           e.hp -= 2; Sound.hit();
-          if (e.hp <= 0) { e.sh.root.dispose(); state.enemies = state.enemies.filter((x) => x !== e); toast("A shade is banished!", 1000); }
+          if (e.hp <= 0) { e.sh.root.dispose(); state.enemies = state.enemies.filter((x) => x !== e); state.stats.shadesBanished++; state.stats.arrowKills++; toast("A shade is banished!", 1000); }
           hit = true; break;
         }
       }
@@ -893,6 +897,146 @@
     if (!state.started || state.mode === "2d") return;
     if (currentOverlay === "codex") closeOverlay();
     else if (!currentOverlay) { renderCodex(); openOverlay("codex"); }
+  }
+
+  // ============================================================
+  // MISSIONS — a 25-level campaign of varied objectives
+  // ============================================================
+  const MISSIONS = [
+    { t: "The Awakening", h: "Something stirs within the painted walls…", g: { type: "reach", x: 0, z: 0, r: 6 } },
+    { t: "The Nile's Secret", h: "What flows in paint may flow in stone.", g: { type: "puzzle", key: "door" } },
+    { t: "Ra's Forgotten Light", h: "Climb to where the sun-disk sleeps.", g: { type: "puzzle", key: "light" } },
+    { t: "The Sacred Barque", h: "A boat painted long ago still wishes to sail.", g: { type: "puzzle", key: "barque" } },
+    { t: "Scarab Hunt I", h: "Khepri's children hide in plain sight.", g: { type: "scarabs", n: 3 } },
+    { t: "Shades of Dusk", h: "When the sun dips, the dark walks.", g: { type: "shades", n: 5 } },
+    { t: "Voices of the City", h: "The living have much to tell.", g: { type: "talk", n: 2 } },
+    { t: "Whispers on Papyrus", h: "Ink remembers what men forget.", g: { type: "scrolls", n: 1 } },
+    { t: "The Guardian's Trial", h: "Anubis weighs your heart.", g: { type: "puzzle", key: "boss" } },
+    { t: "Pharaoh's Reward", h: "Gold awaits the worthy.", g: { type: "puzzle", key: "treasure" } },
+    { t: "Night of Stars", h: "Stand by the oasis beneath the night sky.", g: { type: "reach", x: 38, z: -8, r: 14, at: "night" } },
+    { t: "Scarab Hunt II", h: "Find every last one.", g: { type: "scarabs", n: 7 } },
+    { t: "Armory of the Ancients", h: "Take up a shaft of bronze.", g: { type: "weapon", w: "spear" } },
+    { t: "The Archer's Eye", h: "Loose an arrow true.", g: { type: "arrowKills", n: 3 } },
+    { t: "Desert Wanderer", h: "Walk every quarter of the land.", g: { type: "zonesAll" } },
+    { t: "Storm Survivor", h: "Endure the breath of the desert.", g: { type: "storm" } },
+    { t: "Healer's Path", h: "Know when to drink.", g: { type: "potions", n: 2 } },
+    { t: "Shade Bane", h: "Cleanse the streets of dusk.", g: { type: "shades", n: 10 } },
+    { t: "Lore Keeper", h: "Gather the wisdom of ages.", g: { type: "scrolls", n: 3 } },
+    { t: "The Long Vigil", h: "Hold your ground as time passes.", g: { type: "survive", s: 75 } },
+    { t: "Twin Frescoes", h: "Bring two paintings to life.", g: { type: "puzzles", keys: ["door", "light"] } },
+    { t: "Master of Arms", h: "Wield all three weapons.", g: { type: "weaponsAll" } },
+    { t: "The Full Hunt", h: "Every scarab, every scroll.", g: { type: "huntAll" } },
+    { t: "Cleanse by Moonlight", h: "Drive back the swarming dark.", g: { type: "shades", n: 15 } },
+    { t: "Champion of the Two Worlds", h: "Fulfil the pharaoh's destiny.", g: { type: "all" } },
+  ];
+  let missionsUnlocked = new Set([0]), missionsDone = new Set();
+  function loadMissions() {
+    try { const d = JSON.parse(localStorage.getItem("wotf_missions")); if (d) { missionsUnlocked = new Set(d.u || [0]); missionsDone = new Set(d.d || []); } } catch (e) {}
+  }
+  function saveMissions() { try { localStorage.setItem("wotf_missions", JSON.stringify({ u: [...missionsUnlocked], d: [...missionsDone] })); } catch (e) {} }
+  loadMissions();
+
+  function checkGoal(g) {
+    const S = state.stats;
+    switch (g.type) {
+      case "reach": { if (Math.hypot(camera.position.x - g.x, camera.position.z - g.z) > g.r) return false; if (g.at === "night") { const l = world.timeLabel(); return l === "Night" || l === "Midnight"; } return true; }
+      case "scarabs": return collectedScarabs() >= g.n;
+      case "shades": return S.shadesBanished >= g.n;
+      case "arrowKills": return state.weapons.indexOf("bow") >= 0 && S.arrowKills >= g.n;
+      case "puzzle": return !!state.objectives[g.key];
+      case "puzzles": return g.keys.every((k) => state.objectives[k]);
+      case "talk": return S.npcsTalked.size >= g.n;
+      case "scrolls": return state.codex.length >= g.n;
+      case "weapon": return state.weapons.indexOf(g.w) >= 0;
+      case "weaponsAll": return ["khopesh", "spear", "bow"].every((w) => state.weapons.indexOf(w) >= 0);
+      case "potions": return S.potionsUsed >= g.n;
+      case "survive": return S.missionTime >= g.s;
+      case "storm": return S.stormSurvived;
+      case "zonesAll": return S.zonesVisited.size >= 4;
+      case "huntAll": return collectedScarabs() >= world.scarabs.length && state.codex.length >= world.scrolls.length;
+      case "all": return state.objectives.door && state.objectives.light && state.objectives.barque && state.objectives.boss;
+      default: return false;
+    }
+  }
+  function goalText(g) {
+    const S = state.stats;
+    switch (g.type) {
+      case "reach": return g.at === "night" ? "Reach the marked place at night" : "Reach the marked place";
+      case "scarabs": return "Collect scarabs (" + Math.min(collectedScarabs(), g.n) + "/" + g.n + ")";
+      case "shades": return "Banish shades (" + Math.min(S.shadesBanished, g.n) + "/" + g.n + ")";
+      case "arrowKills": return "Banish shades with the bow (" + Math.min(S.arrowKills, g.n) + "/" + g.n + ")";
+      case "puzzle": return { door: "Open the eastern door", light: "Restore Ra's light", barque: "Sail the Sacred Barque", boss: "Defeat the guardian Anubis", treasure: "Claim the Pharaoh's treasure" }[g.key];
+      case "puzzles": return "Solve the door and the light";
+      case "talk": return "Talk to citizens (" + Math.min(S.npcsTalked.size, g.n) + "/" + g.n + ")";
+      case "scrolls": return "Find lore scrolls (" + Math.min(state.codex.length, g.n) + "/" + g.n + ")";
+      case "weapon": return "Acquire the " + g.w;
+      case "weaponsAll": return "Own all three weapons";
+      case "potions": return "Drink water jars (" + Math.min(S.potionsUsed, g.n) + "/" + g.n + ")";
+      case "survive": return "Survive (" + Math.min(Math.floor(S.missionTime), g.s) + "/" + g.s + "s)";
+      case "storm": return "Survive a sandstorm";
+      case "zonesAll": return "Visit all 4 regions (" + S.zonesVisited.size + "/4)";
+      case "huntAll": return "Collect all scarabs & scrolls";
+      case "all": return "Complete the whole pilgrimage";
+      default: return "";
+    }
+  }
+  function resetMissionStats() {
+    state.stats.shadesBanished = 0; state.stats.arrowKills = 0; state.stats.potionsUsed = 0;
+    state.stats.missionTime = 0; state.stats.stormSurvived = false;
+    state.stats.npcsTalked = new Set(); state.stats.zonesVisited = new Set();
+  }
+  function startMission(i) {
+    if (!missionsUnlocked.has(i)) return;
+    state.mission = i; resetMissionStats();
+    updateMissionBanner();
+    toast("Mission " + (i + 1) + ": " + MISSIONS[i].t, 2600);
+    if (currentOverlay === "missions") closeOverlay();
+  }
+  function completeMission() {
+    const i = state.mission;
+    missionsDone.add(i);
+    if (i + 1 < MISSIONS.length) missionsUnlocked.add(i + 1);
+    saveMissions();
+    Sound.success();
+    toast("✦ MISSION COMPLETE ✦  " + MISSIONS[i].t, 3200);
+    state.mission = -1; updateMissionBanner();
+  }
+  function checkMission(dt) {
+    if (state.mission < 0 || state.mission == null || !MISSIONS[state.mission]) return;
+    if (missionsDone.has(state.mission) && !checkGoal(MISSIONS[state.mission].g)) { /* re-playing a done one */ }
+    const S = state.stats;
+    S.missionTime += dt;
+    if (world.isStorm && world.isStorm()) S.stormSurvived = true;
+    LOCATIONS.forEach((l) => { if (Math.hypot(camera.position.x - l.x, camera.position.z - l.z) < 9) S.zonesVisited.add(l.name); });
+    if (checkGoal(MISSIONS[state.mission].g)) completeMission();
+  }
+  function updateMissionBanner() {
+    if (state.mission != null && state.mission >= 0 && MISSIONS[state.mission]) {
+      const m = MISSIONS[state.mission];
+      dom.missionBanner.innerHTML = "<b>Mission " + (state.mission + 1) + ": " + m.t + "</b> — <span class='mb-prog'>" + goalText(m.g) + "</span>";
+      dom.missionBanner.classList.add("show");
+    } else dom.missionBanner.classList.remove("show");
+  }
+  function renderMissions() {
+    dom.missionsProgress.textContent = missionsDone.size + " / " + MISSIONS.length + " missions complete";
+    dom.missionsGrid.innerHTML = "";
+    MISSIONS.forEach((m, i) => {
+      const unlocked = missionsUnlocked.has(i), done = missionsDone.has(i);
+      const card = document.createElement("div");
+      card.className = "mcard" + (unlocked ? "" : " locked") + (done ? " done" : "") + (state.mission === i ? " active" : "");
+      card.innerHTML = "<div class='mnum'>MISSION " + (i + 1) + "</div>" +
+        "<div class='mtitle'>" + (unlocked ? m.t : "Locked") + "</div>" +
+        "<div class='mhook'>" + (unlocked ? m.h : "Complete the previous mission to unlock.") + "</div>" +
+        "<div class='mstate'>" + (done ? "✔" : unlocked ? "▶" : "🔒") + "</div>";
+      if (unlocked) card.addEventListener("click", () => startMission(i));
+      dom.missionsGrid.appendChild(card);
+    });
+  }
+  function openMissions() { renderMissions(); openOverlay("missions"); }
+  function toggleMissions() {
+    if (!state.started) return;
+    if (currentOverlay === "missions") closeOverlay();
+    else if (!currentOverlay && state.mode !== "2d") openMissions();
   }
 
   // ---- objective waypoint beacon ----
@@ -987,6 +1131,7 @@
   }
   const collectedScarabs = () => world.scarabs.filter((s) => s.collected).length;
   function openDialogue(n) {
+    state.stats.npcsTalked.add(n.def.name);
     const d = n.def.dynamic ? n.def.dynamic() : { lines: n.def.lines };
     state.dialogue = { n, i: 0, lines: d.lines, onClose: d.onClose };
     camera.detachControl(); // freeze the player while talking
@@ -1271,6 +1416,7 @@
     if (k === "m" && state.mode !== "2d") { toggleMap(); return; }
     if (k === "j" && state.mode !== "2d") { toggleQuests(); return; }
     if (k === "c" && state.mode !== "2d") { toggleCodex(); return; }
+    if (k === "l" && state.mode !== "2d") { toggleMissions(); return; }
     if (k === "t" && state.mode !== "2d") { world.skipTime(); toast("Time passes — " + world.timeLabel(), 1400); return; }
     if (k === "g" && state.mode !== "2d") { state.companionsStay = !state.companionsStay; toast("Companions: " + (state.companionsStay ? "hold position" : "follow"), 1400); return; }
     if (k === "h" && state.mode !== "2d") { usePotion(); return; }
@@ -1278,7 +1424,7 @@
     if (e.key === "Escape") {
       if (state.mode === "2d") return;
       if (!dom.settings.classList.contains("hidden")) { showScreen(settingsReturn === "pause" ? "pause" : "menu"); return; }
-      if (currentOverlay === "inventory" || currentOverlay === "map" || currentOverlay === "quests" || currentOverlay === "codex") closeOverlay();
+      if (currentOverlay === "inventory" || currentOverlay === "map" || currentOverlay === "quests" || currentOverlay === "codex" || currentOverlay === "missions") closeOverlay();
       else if (currentOverlay === "pause") resumeGame();
       else pauseGame();
     }
@@ -1419,6 +1565,8 @@
     checkScrollPickup();
     checkTreasurePickup();
     updateArrows(dt);
+    checkMission(dt);
+    if (state.mission >= 0) updateMissionBanner();
     dom.clockHud.textContent = "· " + world.timeLabel();
     if (state.mode === "boss") { updateBoss(dt); return; }
     updateEnemies(dt);
@@ -1588,7 +1736,7 @@
   // ============================================================
   // SCREEN / MENU FLOW
   // ============================================================
-  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map", "quests", "codex"];
+  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map", "quests", "codex", "missions"];
   function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
   let settingsReturn = "menu";
   let currentOverlay = null; // "pause" | "inventory" | null (in-game overlays)
@@ -1682,6 +1830,8 @@
   dom.minimap.addEventListener("click", toggleMap);
   dom.btnQuestsClose.addEventListener("click", closeOverlay);
   dom.btnCodexClose.addEventListener("click", closeOverlay);
+  dom.btnMissions.addEventListener("click", () => { if (!state.started) startGame(null); openMissions(); });
+  dom.btnMissionsClose.addEventListener("click", closeOverlay);
   dom.tcMap.addEventListener("touchstart", (e) => { e.preventDefault(); toggleMap(); }, { passive: false });
 
   // first user gesture anywhere enables audio (autoplay policy)

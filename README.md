@@ -99,6 +99,7 @@ walk near one to collect it.
 | Inventory | `I` | — | — |
 | Map | `M` (or click minimap) | 🗺 button | — |
 | Quest log | `J` | — | — |
+| Missions | `L` | — | — |
 | Lore codex | `C` | — | — |
 | Skip time of day | `T` | — | — |
 | Companions follow / hold | `G` | — | — |
@@ -126,6 +127,15 @@ hits zero you respawn at the gate.
    world** (a sealed door lifts, the temple's torches relight, …).
 4. Solved figures **peel off the wall** and become 3D companions that follow
    you.
+
+## Missions (campaign)
+
+Beyond free roam, there's a **25-mission campaign** (menu → **MISSIONS**, or `L`
+in-game). Each mission has a distinct objective and a "curious" hook — reach a
+place, solve a fresco, hunt scarabs, banish shades, talk to citizens, find lore,
+survive a sandstorm, master the weapons, defeat Anubis, and more. Missions
+**unlock in sequence** as you complete them (progress saved), and the active
+mission's objective + progress shows in a banner.
 
 ## The adventure (objectives)
 

@@ -54,7 +54,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Mountains & rock formations** (M) — low-poly mountain meshes, mesas, layered cliffs, scree fields of **stones/boulders**.
 - [~] **Better water** — animated ripples + oasis foam ring ✅; reflective shader / Nile / waterfalls TBD.
 - [ ] **Rocks & props variety** (S) — more rock/cactus/plant variants, broken columns, statues, sphinxes, urns, braziers.
-- [ ] **Level / world structure** (L) — discrete **levels ("worlds")** or a connected open hub with portals between zones; level-select screen.
+- [x] **Level / world structure** — a 25-mission campaign with a level-select screen and sequential unlocks over the open world. ✅
 - [ ] **Procedural scatter / variation** (M) — seeded placement so each zone feels rich but performant.
 - [~] **Day/night cycle + weather** — sun/sky/fog day→night (T to skip) ✅; periodic sandstorms ✅; rain TBD.
 - [ ] **Interactive environment** (M) — destructible pots, movable blocks, pressure plates, rope/pulley puzzles.

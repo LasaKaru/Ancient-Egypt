@@ -45,6 +45,9 @@
   <!-- Damage vignette flash -->
   <div id="damageFlash"></div>
 
+  <!-- Active mission banner -->
+  <div id="missionBanner"></div>
+
   <!-- Bottom instructions -->
   <div id="instructions">Loading the temple…</div>
 
@@ -88,7 +91,8 @@
     <div class="menu-sub">A Low-Poly Tale of Ancient Egypt</div>
     <div class="menu-buttons">
       <button class="mbtn" id="btnContinue">CONTINUE</button>
-      <button class="mbtn" id="btnPlay">NEW GAME</button>
+      <button class="mbtn" id="btnMissions">MISSIONS</button>
+      <button class="mbtn ghost" id="btnPlay">FREE ROAM</button>
       <button class="mbtn ghost" id="btnSettings">SETTINGS</button>
       <button class="mbtn ghost" id="btnCredits">CREDITS</button>
     </div>
@@ -208,6 +212,16 @@
       <div class="ft-label">Fast travel</div>
       <div class="map-fast" id="fastTravel"></div>
       <div class="panel-actions"><button class="mbtn" id="btnMapClose">CLOSE</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Missions ===== -->
+  <div id="missions" class="screen hidden">
+    <div class="panel-box missions-box">
+      <h2>Missions</h2>
+      <div class="missions-sub" id="missionsProgress"></div>
+      <div class="missions-grid" id="missionsGrid"></div>
+      <div class="panel-actions"><button class="mbtn" id="btnMissionsClose">CLOSE</button></div>
     </div>
   </div>
 
