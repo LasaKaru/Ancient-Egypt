@@ -273,9 +273,36 @@
     const armL = part(0.14, 0.62, 0.16, skin, -0.34, 1.12, 0);
     const armR = part(0.14, 0.62, 0.16, skin, 0.34, 1.12, 0);
     part(0.36, 0.36, 0.34, skin, 0, 1.63, 0);      // head
-    part(0.42, 0.18, 0.4, hair, 0, 1.78, -0.02);   // nemes top
-    part(0.1, 0.34, 0.42, mat(opts.gold || "#d4a017"), 0, 1.55, -0.18); // back lappet
 
+    // headgear by type
+    const hat = opts.hat || "nemes";
+    if (hat === "nemes") {
+      part(0.42, 0.18, 0.4, hair, 0, 1.78, -0.02);
+      part(0.1, 0.34, 0.42, mat(opts.gold || "#d4a017"), 0, 1.55, -0.18);
+    } else if (hat === "hair") {
+      part(0.4, 0.22, 0.4, hair, 0, 1.76, 0);
+    } else if (hat === "crown") {                  // queen / royalty
+      part(0.42, 0.2, 0.42, mat("#1a120a"), 0, 1.78, 0);
+      const crown = cyl(0.5, 0.42, 0.34, 8, mat(opts.gold || "#e8c054", "#7a5c00", 0.4), "crown");
+      crown.parent = root; crown.position.y = 2.1;
+      const orb = lowSphere(0.18, 1, mat("#bb3b22", "#7a1a10", 0.5), "crownOrb"); orb.parent = root; orb.position.y = 2.4;
+    } else if (hat === "hood") {                    // monk / priest
+      const hood = cyl(0.55, 0.1, 0.5, 7, cloth, "hood"); hood.parent = root; hood.position.y = 1.78;
+    } else if (hat === "helm") {                    // soldier
+      const helm = lowSphere(0.42, 1, mat(opts.gold || "#8a6a3a"), "helm"); helm.parent = root; helm.position.y = 1.74; helm.scaling.y = 0.8;
+    }
+
+    // held item
+    const hold = opts.hold || "none";
+    if (hold === "spear") {
+      const shaft = cyl(2.2, 0.05, 0.06, 5, mat("#6b4a25"), "spearShaft"); shaft.parent = root; shaft.position.set(0.4, 1.1, 0.05);
+      const tip = cyl(0.35, 0, 0.14, 4, mat("#9a9a9a"), "spearTip"); tip.parent = root; tip.position.set(0.4, 2.25, 0.05);
+    } else if (hold === "staff") {
+      const st = cyl(2.0, 0.06, 0.07, 6, mat("#8a6a3a"), "staff"); st.parent = root; st.position.set(0.4, 1.0, 0.05);
+      const knob = lowSphere(0.2, 1, mat("#d4a017", "#7a5c00", 0.4), "staffKnob"); knob.parent = root; knob.position.set(0.4, 2.05, 0.05);
+    }
+
+    if (opts.scale) root.scaling.setAll(opts.scale);
     [legL, legR, armL, armR].forEach((p) => p.setPivotPoint(new B.Vector3(0, p === legL || p === legR ? 0.37 : 0.31, 0)));
 
     let phase = 0;
@@ -343,6 +370,42 @@
       glow.intensity = 1.6 + Math.sin(t * 7) * 0.4;
     }
     return { root, collider, glow, update, eyeMat };
+  }
+
+  // ---------- player weapon viewmodels (first-person) ----------
+  function weapon(type) {
+    const root = new B.TransformNode("weapon_" + type, _scene);
+    const metal = mat("#b9bcc4"), bronze = mat("#c08a3e", "#5a3a10", 0.2), wood = mat("#6b4a25");
+    const hand = box(0.16, 0.16, 0.2, mat("#caa46a"), "wHand"); flat(hand); hand.parent = root; hand.position.set(0, -0.12, -0.05);
+    if (type === "khopesh") {
+      const grip = cyl(0.4, 0.05, 0.06, 6, wood, "kGrip"); grip.parent = root; grip.rotation.x = Math.PI / 2; grip.position.set(0, 0, 0.1);
+      const blade = box(0.07, 0.5, 0.12, bronze, "kBlade"); flat(blade); blade.parent = root; blade.position.set(0, 0.18, 0.35); blade.rotation.x = -0.5;
+      const curve = box(0.07, 0.3, 0.1, bronze, "kCurve"); flat(curve); curve.parent = root; curve.position.set(0, 0.42, 0.55); curve.rotation.x = -1.4;
+    } else if (type === "spear") {
+      const shaft = cyl(1.7, 0.045, 0.05, 5, wood, "spShaft"); shaft.parent = root; shaft.rotation.x = Math.PI / 2; shaft.position.set(0, 0, 0.6);
+      const tip = cyl(0.4, 0, 0.13, 4, metal, "spTip"); tip.parent = root; tip.rotation.x = Math.PI / 2; tip.position.set(0, 0, 1.5);
+    } else if (type === "bow") {
+      const b1 = box(0.05, 0.9, 0.08, wood, "bowArc"); flat(b1); b1.parent = root; b1.position.set(0, 0.05, 0.3); b1.rotation.x = 0.2;
+      const top = box(0.05, 0.35, 0.07, wood, "bowTop"); flat(top); top.parent = root; top.position.set(0, 0.5, 0.42); top.rotation.x = 0.9;
+      const bot = box(0.05, 0.35, 0.07, wood, "bowBot"); flat(bot); bot.parent = root; bot.position.set(0, -0.4, 0.42); bot.rotation.x = -0.9;
+    }
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; m.renderingGroupId = 1; });
+    return root;
+  }
+  function arrow() {
+    const root = new B.TransformNode("arrow", _scene);
+    const shaft = cyl(0.7, 0.02, 0.02, 4, mat("#6b4a25"), "arrShaft"); shaft.parent = root; shaft.rotation.x = Math.PI / 2;
+    const tip = cyl(0.12, 0, 0.05, 4, mat("#9a9a9a"), "arrTip"); tip.parent = root; tip.rotation.x = Math.PI / 2; tip.position.z = 0.4;
+    root.getChildMeshes().forEach((m) => { m.isPickable = false; });
+    return root;
+  }
+  function weaponPickup(type) {
+    const root = new B.TransformNode("wpick_" + type, _scene);
+    const w = weapon(type); w.parent = root; w.scaling.setAll(1.4); w.position.y = 1.0;
+    w.getChildMeshes().forEach((m) => { m.renderingGroupId = 0; });
+    // glowing base ring
+    const ring = cyl(0.1, 0.7, 0.7, 10, mat("#ffd24a", "#a87a00", 0.6), "wRing"); ring.parent = root; ring.position.y = 0.05;
+    return root;
   }
 
   // ---------- held flashlight viewmodel (first-person) ----------
@@ -542,5 +605,6 @@
     palmTree, cactus, rock, grassTuft, pyramid, obelisk,
     skydome, sun, cloud, water, dunes, humanoid, guardian,
     flashlight, candle, boat, mountain, mesa, bird, scarab, treasure, shade, house, stall, jar, beacon,
+    weapon, arrow, weaponPickup,
   };
 })(window);

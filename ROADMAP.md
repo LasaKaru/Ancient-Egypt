@@ -34,8 +34,8 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 ## 1. Player systems & progression
 - [x] **Inventory system** — collectible Sacred Scarabs (5), inventory panel (I), HUD counter. ✅
 - [x] **Save / load** — auto-save + Continue (objectives, door/light/boss, companions, scarabs, camera). ✅
-- [ ] **Equippable tools** (M) — flashlight upgrades, a brush that "reveals" hidden frescoes, a chisel, a torch.
-- [ ] **Hotbar / quick-use** (S) — number keys / radial for tools.
+- [x] **Equippable weapons** — khopesh / spear / bow with viewmodels, switching & pickups. ✅ (tool variants TBD)
+- [x] **Hotbar / quick-use** — number keys 1/2/3 + Q to switch weapons. ✅
 - [ ] **Ability unlocks** (L) — e.g. dash, double-jump, "ink dash" that lets the 2D figure leap gaps.
 - [ ] **Skill tree / upgrades** (L) — spend collected scarabs on light range, strike power, climb speed.
 - [x] **Health** — Vitality bar, enemy damage, out-of-combat regen, respawn at the gate. ✅
@@ -73,10 +73,10 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Companion commands** (M) — point them somewhere, hold position.
 - [x] **NPCs with dialogue** — merchant, priest, child in the city; proximity-talk dialogue UI. ✅ (branching TBD)
 - [ ] **Enemies / patrols** (L) — scarab swarms, mummies, temple guards with simple AI (patrol/chase/attack).
-- [ ] **Animation upgrades** (M–L) — skeletal-rigged characters or richer procedural animation than the current limb-swing.
+- [~] **Animation/variety** — varied citizen types (men/women/children/monks/queens/soldiers); skeletal rigs TBD.
 
 ## 6. Combat & bosses
-- [ ] **Combat depth** (L) — light vs. shadow damage types, blocking/dodge, combos, charged strikes.
+- [~] **Combat depth** — melee (khopesh/spear) + ranged (bow arrows) vs. shades & boss; dodge/combos TBD.
 - [ ] **More bosses** (XL) — a spider-guardian, a serpent (Apophis), a sphinx riddle-boss; each with a unique 2D/3D gimmick.
 - [ ] **Boss telegraphs & dodgeable attacks** (M) — currently roars are cosmetic; make them real attacks.
 - [ ] **Enemy variety & spawning** (M).

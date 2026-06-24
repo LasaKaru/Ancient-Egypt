@@ -40,6 +40,7 @@
     setSens: $("setSens"), setSensVal: $("setSensVal"), setFov: $("setFov"), setFovVal: $("setFovVal"),
     setQuality: $("setQuality"), setFog: $("setFog"), setMusic: $("setMusic"),
     setDifficulty: $("setDifficulty"), setReduced: $("setReduced"), potionHud: $("potionHud"),
+    weaponHud: $("weaponHud"), weaponName: $("weaponName"), weaponKeys: $("weaponKeys"),
     quests: $("quests"), questMain: $("questMain"), questSide: $("questSide"), btnQuestsClose: $("btnQuestsClose"),
   };
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -84,6 +85,14 @@
   flashSpot.range = 22;
   flashlight.setEnabled(false); flashSpot.setEnabled(false); // off until gameplay
 
+  // ---------- weapon viewmodels (parented to camera, bottom-right) ----------
+  const WEAPON_INFO = { khopesh: { name: "⚔ Khopesh", key: "1" }, spear: { name: "🔱 Spear", key: "2" }, bow: { name: "🏹 Bow", key: "3" } };
+  const weaponViews = {};
+  ["khopesh", "spear", "bow"].forEach((t) => {
+    const v = LP.weapon(t); v.parent = camera; v.position.set(0.34, -0.3, 0.7); v.rotation.set(-0.05, 0, 0);
+    v.setEnabled(false); weaponViews[t] = v;
+  });
+
   // ---------- sealed door (low-poly) — fills the eastern doorway to the oasis ----------
   const door = LP.box(0.6, 4, 6, LP.mat("#b89a5e"), "door");
   LP.flat(door);
@@ -113,6 +122,7 @@
     dialogue: null,
     quests: { khufu: "unstarted" },
     potions: 0, photo: false, enemyDamage: 8, reducedMotion: false,
+    weapons: ["khopesh"], weapon: "khopesh", arrows: [],
     health: 100, maxHealth: 100, lastHit: 0,
     objectives: { door: false, light: false, barque: false, boss: false, treasure: false },
   };
@@ -242,7 +252,7 @@
     state.savedCam = { position: camera.position.clone(), rotation: camera.rotation.clone(), mode: camera.mode };
     camera.detachControl();
     camera.mode = B.Camera.ORTHOGRAPHIC_CAMERA;
-    flashlight.setEnabled(false); flashSpot.setEnabled(false);
+    flashSpot.setEnabled(false); showHeld(false);
 
     // place the ortho camera squarely in front of the fresco using its own normal
     const wpos = mural.getAbsolutePosition();
@@ -321,7 +331,7 @@
     camera.position = state.savedCam.position;
     camera.rotation = state.savedCam.rotation;
     camera.attachControl(canvas, true);
-    flashlight.setEnabled(true); flashSpot.setEnabled(true);
+    flashSpot.setEnabled(true); showHeld(true);
     if (state.paintedChar) { state.paintedChar.dispose(); state.paintedChar = null; }
     if (state.patch) { state.patch.dispose(); state.patch = null; }
     state.currentMural = null;
@@ -741,6 +751,83 @@
     state.potions--; state.health = Math.min(state.maxHealth, state.health + 45);
     updateHealthHud(); Sound.success(); toast("You drink — vitality restored.", 1400); saveGame();
   }
+  // ============================================================
+  // WEAPONS (khopesh / spear / bow)
+  // ============================================================
+  function showHeld(on) {
+    Object.values(weaponViews).forEach((v) => v.setEnabled(false));
+    if (on && weaponViews[state.weapon]) weaponViews[state.weapon].setEnabled(true);
+  }
+  function updateWeaponHud() {
+    dom.weaponName.textContent = WEAPON_INFO[state.weapon].name;
+    dom.weaponKeys.textContent = state.weapons.map((w) => WEAPON_INFO[w].key + ":" + WEAPON_INFO[w].name.split(" ")[1]).join("  ");
+  }
+  function equipWeapon(type) {
+    if (state.weapons.indexOf(type) < 0) return;
+    state.weapon = type; showHeld(true); updateWeaponHud(); Sound.step();
+  }
+  function cycleWeapon() {
+    const i = state.weapons.indexOf(state.weapon);
+    equipWeapon(state.weapons[(i + 1) % state.weapons.length]);
+  }
+  function ownWeapon(type) {
+    if (state.weapons.indexOf(type) >= 0) return;
+    state.weapons.push(type); equipWeapon(type);
+    toast("Acquired the " + WEAPON_INFO[type].name.split(" ")[1] + "!  (press " + WEAPON_INFO[type].key + ")", 2400);
+    saveGame();
+  }
+  function checkWeaponPickup() {
+    world.weaponPickups.forEach((w) => {
+      if (w.taken) return;
+      const dx = camera.position.x - w.root.position.x, dz = camera.position.z - w.root.position.z;
+      if (dx * dx + dz * dz < 2.8 * 2.8) { w.taken = true; w.root.setEnabled(false); ownWeapon(w.type); }
+    });
+  }
+  // unified attack — melee (khopesh/spear) or bow
+  function attack() {
+    if (state.mode === "2d" || state.paused || state.dialogue) return;
+    if (state.weapon === "bow") { fireArrow(); return; }
+    if (state.mode === "boss") { hitBoss(); return; }
+    strikeMelee();
+  }
+  function strikeMelee() {
+    const range = state.weapon === "spear" ? 6.5 : 4.5;
+    const pick = scene.pickWithRay(camera.getForwardRay(range), (m) => m.metadata && m.metadata.shade);
+    if (!pick.hit) return;
+    const e = state.enemies.find((x) => x.sh.col === pick.pickedMesh);
+    if (!e) return;
+    e.hp -= 2; Sound.hit(); shake(); e.sh.root.scaling.scaleInPlace(0.9);
+    if (e.hp <= 0) { Sound.unwhoosh(); e.sh.root.dispose(); state.enemies = state.enemies.filter((x) => x !== e); toast("A shade is banished!", 1200); }
+  }
+  function fireArrow() {
+    const a = LP.arrow();
+    const dir = camera.getForwardRay(1).direction.clone();
+    a.position = camera.position.add(dir.scale(0.9));
+    a.rotation.y = Math.atan2(dir.x, dir.z); a.rotation.x = -Math.asin(Math.max(-1, Math.min(1, dir.y)));
+    state.arrows.push({ root: a, dir, t: 0 });
+    Sound.whoosh();
+  }
+  function updateArrows(dt) {
+    for (let i = state.arrows.length - 1; i >= 0; i--) {
+      const ar = state.arrows[i]; ar.t += dt;
+      ar.root.position.addInPlace(ar.dir.scale(30 * dt));
+      let hit = false;
+      for (const e of state.enemies) {
+        if (B.Vector3.Distance(ar.root.position, e.sh.root.position.add(new B.Vector3(0, 1, 0))) < 1.3) {
+          e.hp -= 2; Sound.hit();
+          if (e.hp <= 0) { e.sh.root.dispose(); state.enemies = state.enemies.filter((x) => x !== e); toast("A shade is banished!", 1000); }
+          hit = true; break;
+        }
+      }
+      const b = state.boss;
+      if (!hit && b && b.g && !b.transitioning && b.hitCd <= 0 && (b.phase === 1 || b.phase === 3) &&
+          B.Vector3.Distance(ar.root.position, b.g.root.position.add(new B.Vector3(0, 2, 0))) < 2.6) {
+        damageBoss(); flashEyes(); hit = true;
+      }
+      if (hit || ar.t > 2.6) { ar.root.dispose(); state.arrows.splice(i, 1); }
+    }
+  }
+
   // ---- objective waypoint beacon ----
   const beacon = LP.beacon(); beacon.setEnabled(false);
   function activeWaypoint() {
@@ -1059,24 +1146,28 @@
       return;
     }
     if (!down) return;
-    if (state.mode === "boss") { if (key === " " || key === "spacebar") hitBoss(); return; }
+    if (key === "1") { equipWeapon("khopesh"); return; }
+    if (key === "2") { equipWeapon("spear"); return; }
+    if (key === "3") { equipWeapon("bow"); return; }
+    if (key === "q") { cycleWeapon(); return; }
+    if (state.mode === "boss") { if (key === " " || key === "spacebar") attack(); return; }
     if (key === "e") {
       const m = lookedAtInteractive();
       if (m) enter2DMode(m);
       else { const npc = nearestNPC(); if (npc) openDialogue(npc); }
       return;
     }
-    if (key === " " || key === "spacebar") strikeShades();
+    if (key === " " || key === "spacebar") attack();
   });
 
   scene.onPointerObservable.add((pi) => {
     if (pi.type !== B.PointerEventTypes.POINTERDOWN) return;
     if (!state.started || state.paused) return;
     if (state.dialogue) { advanceDialogue(); return; }
-    if (state.mode === "boss") { hitBoss(); return; }
+    if (state.mode === "boss") { attack(); return; }
     if (state.mode === "3d") {
       if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
-      else strikeShades();
+      else attack();
     }
   });
 
@@ -1119,8 +1210,8 @@
   dom.tcAction.addEventListener("touchstart", (e) => {
     e.preventDefault();
     if (state.mode === "2d") exit2DMode();
-    else if (state.mode === "boss") hitBoss();
-    else { const m = lookedAtInteractive(); if (m) enter2DMode(m); else strikeShades(); }
+    else if (state.mode === "boss") attack();
+    else { const m = lookedAtInteractive(); if (m) enter2DMode(m); else { const npc = nearestNPC(); if (npc) openDialogue(npc); else attack(); } }
   }, { passive: false });
   dom.tcPause.addEventListener("touchstart", (e) => { e.preventDefault(); pauseGame(); }, { passive: false });
 
@@ -1195,9 +1286,10 @@
     // A (0) = interact / strike / exit-2D ; B (1) = back/exit ; Start (9) = pause
     if (edge(0)) {
       if (state.mode === "2d") exit2DMode();
-      else if (state.mode === "boss") hitBoss();
-      else if (!state.paused) { const m = lookedAtInteractive(); if (m) enter2DMode(m); else strikeShades(); }
+      else if (state.mode === "boss") attack();
+      else if (!state.paused) { const m = lookedAtInteractive(); if (m) enter2DMode(m); else { const npc = nearestNPC(); if (npc) openDialogue(npc); else attack(); } }
     }
+    if (edge(2)) cycleWeapon(); // X = cycle weapon
     if (edge(1) && state.mode === "2d") exit2DMode();
     if (edge(9)) { if (currentOverlay === "pause") resumeGame(); else if (!currentOverlay && state.mode !== "2d") pauseGame(); }
   }
@@ -1229,7 +1321,9 @@
     updateMinimap();
     checkScarabPickup();
     checkJarPickup();
+    checkWeaponPickup();
     checkTreasurePickup();
+    updateArrows(dt);
     if (state.mode === "boss") { updateBoss(dt); return; }
     updateEnemies(dt);
     updateNPCs(dt);
@@ -1361,7 +1455,9 @@
       companions: state.companions.map((c) => c.colors || {}),
       quests: state.quests,
       potions: state.potions,
+      weapons: state.weapons, weapon: state.weapon,
       jars: world.jars.filter((j) => j.used).map((j) => j.id),
+      weaponsTaken: world.weaponPickups.filter((w) => w.taken).map((w) => w.id),
       scarabs: world.scarabs.filter((s) => s.collected).map((s) => s.id),
       cam: { p: [camera.position.x, camera.position.y, camera.position.z], r: [camera.rotation.x, camera.rotation.y, camera.rotation.z] },
     };
@@ -1378,6 +1474,9 @@
     if (d.obj.boss && !d.obj.treasure) spawnTreasure();
     if (d.quests) state.quests = Object.assign({ khufu: "unstarted" }, d.quests);
     state.potions = d.potions || 0;
+    if (d.weapons && d.weapons.length) state.weapons = d.weapons.slice();
+    if (d.weapon && state.weapons.indexOf(d.weapon) >= 0) state.weapon = d.weapon;
+    (d.weaponsTaken || []).forEach((id) => { const w = world.weaponPickups.find((x) => x.id === id); if (w) { w.taken = true; w.root.setEnabled(false); } });
     (d.jars || []).forEach((id) => { const j = world.jars.find((x) => x.id === id); if (j) { j.used = true; j.root.setEnabled(false); } });
     (d.companions || []).forEach((col) => spawnCompanion(col));
     (d.scarabs || []).forEach((id) => { const s = world.scarabs.find((x) => x.id === id); if (s) { s.collected = true; s.root.setEnabled(false); } });
@@ -1419,10 +1518,11 @@
     scene.activeCamera = camera;
     camera.position = world.spawn.clone();
     camera.attachControl(canvas, true);
-    flashlight.setEnabled(true); flashSpot.setEnabled(true);
+    flashSpot.setEnabled(true);
     dom.crosshair.style.display = "block";
     if (saveData) applyLoad(saveData); else updateScarabHud();
     state.health = state.maxHealth; updateHealthHud();
+    equipWeapon(state.weapon); showHeld(true);
     spawnEnemies();
     spawnNPCs();
     renderObjectives();

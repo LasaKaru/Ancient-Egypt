@@ -334,6 +334,60 @@
       });
     });
 
+    // ============================================================
+    // CITY POPULATION — wandering citizens of varied kinds
+    // ============================================================
+    const skins = ["#c8854f", "#d99b63", "#a9703c", "#bf8a52"];
+    const rnd = (a) => a[Math.floor(LP.hash(citizens.length + 1, citizens.length + 7) * a.length) % a.length];
+    const citizens = [];
+    function citizenOpts(type) {
+      const skin = rnd(skins);
+      switch (type) {
+        case "woman": return { type, skin, cloth: rnd(["#2f8f7e", "#bb6f8f", "#efe6cf"]), hat: "hair", hair: "#1a120a" };
+        case "child": return { type, skin, cloth: rnd(["#bb3b22", "#2f6f8f", "#d4a017"]), hat: "hair", scale: 0.62 };
+        case "monk": return { type, skin, cloth: "#e7ddc6", hat: "hood", hold: "staff" };
+        case "queen": return { type, skin, cloth: "#efe6cf", hat: "crown", gold: "#e8c054" };
+        case "soldier": return { type, skin, cloth: "#8a6a3a", hat: "helm", hold: "spear" };
+        default: return { type, skin, cloth: rnd(["#bb3b22", "#2f6f8f", "#2f8f7e", "#b89a5e"]), hat: LP.hash(7, citizens.length) > 0.5 ? "nemes" : "hair" };
+      }
+    }
+    function addCitizen(type, x, z) {
+      const api = LP.humanoid(citizenOpts(type));
+      api.root.position.set(x, heightAt(x, z), z);
+      citizens.push({ api, home: { x, z }, heading: Math.random() * 6, wt: 0, sp: 0.55 + Math.random() * 0.5, soldier: type === "soldier" });
+    }
+    const kinds = ["man", "man", "woman", "woman", "child", "child", "monk", "queen", "man", "woman"];
+    kinds.forEach((k, i) => { const a = (i / kinds.length) * Math.PI * 2, r = 4 + LP.hash(i, 3) * 9; addCitizen(k, CX + Math.cos(a) * r, CZ + Math.sin(a) * r); });
+    // soldiers patrol the temple approach and city gate
+    [[3, -20], [-3, -20], [-22, -6], [0, -8]].forEach((s) => addCitizen("soldier", s[0], s[1]));
+
+    scene.onBeforeRenderObservable.add(() => {
+      const dt = Math.min(0.05, scene.getEngine().getDeltaTime() / 1000);
+      citizens.forEach((c) => {
+        c.wt -= dt;
+        if (c.wt <= 0) { c.heading += (Math.random() - 0.5) * 1.6; c.wt = 1.5 + Math.random() * 2.5; }
+        const nx = Math.sin(c.heading), nz = Math.cos(c.heading);
+        const px = c.api.root.position.x + nx * c.sp * dt, pz = c.api.root.position.z + nz * c.sp * dt;
+        if (Math.hypot(px - c.home.x, pz - c.home.z) > 11) { c.heading += Math.PI; }
+        else { c.api.root.position.x = px; c.api.root.position.z = pz; }
+        c.api.root.position.y = heightAt(c.api.root.position.x, c.api.root.position.z);
+        c.api.root.rotation.y = c.heading;
+        c.api.update(dt, true);
+      });
+    });
+
+    // ---- ancient weapon pickups ----
+    const weaponPickups = [];
+    [["spear", -30, -2], ["bow", 6, 4]].forEach((w, i) => {
+      const root = LP.weaponPickup(w[0]);
+      root.position.set(w[1], heightAt(w[1], w[2]), w[2]);
+      weaponPickups.push({ root, type: w[0], id: i, taken: false });
+    });
+    scene.onBeforeRenderObservable.add(() => {
+      const t = performance.now() * 0.001;
+      weaponPickups.forEach((w) => { if (!w.taken) { w.root.rotation.y += 0.02; w.root.position.y = heightAt(w.root.position.x, w.root.position.z) + Math.sin(t) * 0.12; } });
+    });
+
     // ---- healing water jars (consumables) ----
     const jars = [];
     [[5, 3], [-30, -8], [33, -4], [3, -28]].forEach((s, i) => {
@@ -350,6 +404,7 @@
 
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
              boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings, jars,
+             citizens, weaponPickups,
              oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };
   }
 

@@ -26,6 +26,14 @@ Walk up and press **E** to talk; they share lore and hints. **Merchant Khufu**
 offers a **side quest** ("gather 3 Sacred Scarabs") that you can track in the
 **Quest Log** (`J`) and turn in for a reward.
 
+**A living city:** wandering **citizens** — men, women, children, **monks**,
+**queens** and patrolling **soldiers** — populate the streets and market.
+
+**Ancient weapons:** fight the shades and the guardian with a **khopesh**
+(fast melee), a **spear** (longer reach) or a **bow** (ranged arrows). You start
+with the khopesh; find the spear and bow in the world. Switch with `1`/`2`/`3`
+or `Q`.
+
 **Music & audio:** a unique **procedural Ancient‑Egyptian score** — a plucked
 oud/harp melody in the double‑harmonic (Hijaz) scale over a frame‑drum groove
 and a low drone — plays under the ambient temple wind and SFX. Toggle it (and
@@ -82,6 +90,8 @@ walk near one to collect it.
 | Quest log | `J` | — | — |
 | Drink water jar (heal) | `H` | — | — |
 | Photo mode (hide HUD) | `P` | — | — |
+| Attack (equipped weapon) | Click / `Space` | ⚔ button | A |
+| Switch weapon | `1` `2` `3` / `Q` | — | X (cycle) |
 
 Mobile uses an on-screen movement **joystick** (left) and **drag‑to‑look**
 (right side); a connected **gamepad** drives movement and look automatically.

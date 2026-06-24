@@ -528,6 +528,15 @@ body.playing #healthHud { display: block; }
 
 #potionHud { float: right; opacity: 0.95; letter-spacing: 0; }
 
+/* ---------- Weapon HUD ---------- */
+#weaponHud {
+  position: absolute; left: 20px; bottom: 62px; z-index: 10; display: none;
+  background: var(--panel); border: 1px solid rgba(244, 217, 160, 0.3);
+  border-radius: 8px; padding: 5px 12px; font-size: 14px; letter-spacing: 1px;
+}
+body.playing #weaponHud { display: block; }
+#weaponHud .wkeys { opacity: 0.6; font-size: 11px; margin-left: 6px; }
+
 /* ---------- Photo mode: hide all HUD ---------- */
 body.photo #objectives, body.photo #instructions, body.photo #scarabHud,
 body.photo #minimap, body.photo #healthHud, body.photo #crosshair,
