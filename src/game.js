@@ -44,6 +44,8 @@
     codex: $("codex"), codexList: $("codexList"), btnCodexClose: $("btnCodexClose"), clockHud: $("clockHud"),
     btnMissions: $("btnMissions"), missions: $("missions"), missionsGrid: $("missionsGrid"),
     missionsProgress: $("missionsProgress"), btnMissionsClose: $("btnMissionsClose"), missionBanner: $("missionBanner"),
+    achievements: $("achievements"), achList: $("achList"), achProgress: $("achProgress"), btnAchClose: $("btnAchClose"),
+    cheats: $("cheats"), cheatGrid: $("cheatGrid"), btnCheatsClose: $("btnCheatsClose"),
     quests: $("quests"), questMain: $("questMain"), questSide: $("questSide"), btnQuestsClose: $("btnQuestsClose"),
   };
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -1040,6 +1042,111 @@
     else if (!currentOverlay && state.mode !== "2d") openMissions();
   }
 
+  // ============================================================
+  // ACHIEVEMENTS
+  // ============================================================
+  const ACHIEVEMENTS = [
+    { id: "firstScarab", n: "Khepri's Favour", d: "Collect your first sacred scarab." },
+    { id: "allScarabs", n: "Scarab Master", d: "Collect every sacred scarab." },
+    { id: "firstShade", n: "Light Bringer", d: "Banish your first shade." },
+    { id: "tenShades", n: "Shade Bane", d: "Banish ten shades." },
+    { id: "door", n: "Into the Painting", d: "Bring the Nile fresco to life." },
+    { id: "light", n: "Ra Restored", d: "Relight the temple." },
+    { id: "boss", n: "Guardian Slain", d: "Defeat Anubis." },
+    { id: "treasure", n: "Pharaoh's Heir", d: "Claim the treasure." },
+    { id: "arms", n: "Master of Arms", d: "Own all three weapons." },
+    { id: "lore3", n: "Lore Keeper", d: "Discover three lore scrolls." },
+    { id: "mission1", n: "First Steps", d: "Complete your first mission." },
+    { id: "allMissions", n: "Champion of the Two Worlds", d: "Complete all 25 missions." },
+  ];
+  let achDone = new Set();
+  try { achDone = new Set(JSON.parse(localStorage.getItem("wotf_ach")) || []); } catch (e) {}
+  function unlockAch(id) {
+    if (achDone.has(id)) return;
+    const a = ACHIEVEMENTS.find((x) => x.id === id); if (!a) return;
+    achDone.add(id); try { localStorage.setItem("wotf_ach", JSON.stringify([...achDone])); } catch (e) {}
+    toast("🏆 Achievement: " + a.n, 2600); Sound.success();
+    if (currentOverlay === "achievements") renderAch();
+  }
+  function checkAchievements() {
+    if (collectedScarabs() >= 1) unlockAch("firstScarab");
+    if (collectedScarabs() >= world.scarabs.length) unlockAch("allScarabs");
+    if (state.stats.shadesBanished >= 1) unlockAch("firstShade");
+    if (state.stats.shadesBanished >= 10) unlockAch("tenShades");
+    if (state.objectives.door) unlockAch("door");
+    if (state.objectives.light) unlockAch("light");
+    if (state.objectives.boss) unlockAch("boss");
+    if (state.objectives.treasure) unlockAch("treasure");
+    if (["khopesh", "spear", "bow"].every((w) => state.weapons.indexOf(w) >= 0)) unlockAch("arms");
+    if (state.codex.length >= 3) unlockAch("lore3");
+    if (missionsDone.size >= 1) unlockAch("mission1");
+    if (missionsDone.size >= MISSIONS.length) unlockAch("allMissions");
+  }
+  function renderAch() {
+    dom.achProgress.textContent = achDone.size + " / " + ACHIEVEMENTS.length + " unlocked";
+    dom.achList.innerHTML = ACHIEVEMENTS.map((a) => {
+      const got = achDone.has(a.id);
+      return `<div class="codex-entry${got ? "" : " locked"}"><h4><span class="ach-ico">${got ? "🏆" : "🔒"}</span>${a.n}</h4><p>${a.d}</p></div>`;
+    }).join("");
+  }
+  function toggleAch() {
+    if (!state.started || state.mode === "2d") return;
+    if (currentOverlay === "achievements") closeOverlay();
+    else if (!currentOverlay) { renderAch(); openOverlay("achievements"); }
+  }
+
+  // ============================================================
+  // HINT SYSTEM — nudge the player if they get stuck
+  // ============================================================
+  let hintT = 0, hintStage = 0, hintKey = "";
+  function updateHints(dt) {
+    const wp = state._wp;
+    const key = (state.mission >= 0 ? "m" + state.mission : "") + JSON.stringify(state.objectives) + collectedScarabs();
+    if (key !== hintKey) { hintKey = key; hintT = 0; hintStage = 0; return; } // progress reset
+    hintT += dt;
+    if (hintStage === 0 && hintT > 28) { hintStage = 1; showHint(); }
+    else if (hintStage === 1 && hintT > 55) { hintStage = 2; showHint(); }
+  }
+  function showHint() {
+    let msg = "Tip: follow the golden beacon, or open the map (M).";
+    if (state.mission >= 0 && MISSIONS[state.mission]) msg = "Objective: " + goalText(MISSIONS[state.mission].g) + " — follow the beacon.";
+    else if (!state.objectives.door) msg = "Hint: enter the central Nile fresco (press E) and walk the figure to the far side.";
+    else if (!state.objectives.light) msg = "Hint: find the painted pillar near the entrance and climb it.";
+    else if (!state.objectives.boss) msg = "Hint: the Anubis fresco on the left wall awaits — press E.";
+    toast(msg, 3400);
+  }
+
+  // ============================================================
+  // DEBUG / CHEATS
+  // ============================================================
+  const CHEATS = [
+    ["Full Heal", () => { state.health = state.maxHealth; updateHealthHud(); }],
+    ["+5 Water Jars", () => { state.potions += 5; updateHealthHud(); }],
+    ["Give All Weapons", () => { ["spear", "bow"].forEach(ownWeapon); }],
+    ["Collect All Scarabs", () => { world.scarabs.forEach((s) => { if (!s.collected) { s.collected = true; s.root.setEnabled(false); } }); updateScarabHud(); renderObjectives(); }],
+    ["Open Door", () => { if (!state.objectives.door) { door.position.y = 6.2; door.checkCollisions = false; state.objectives.door = true; renderObjectives(); } }],
+    ["Restore Light", () => { if (!state.objectives.light) { lightTemple(); state.objectives.light = true; renderObjectives(); } }],
+    ["Unlock All Missions", () => { for (let i = 0; i < MISSIONS.length; i++) missionsUnlocked.add(i); saveMissions(); }],
+    ["Theme: Wild", () => { world.setTheme("wild"); }],
+    ["Theme: Modern", () => { world.setTheme("modern"); }],
+    ["Theme: Ancient", () => { world.setTheme("ancient"); }],
+    ["Skip Time", () => { world.skipTime(); }],
+    ["Spawn Shades", () => { spawnEnemies(); }],
+  ];
+  function renderCheats() {
+    dom.cheatGrid.innerHTML = "";
+    CHEATS.forEach(([label, fn]) => {
+      const btn = document.createElement("button"); btn.className = "ft-btn"; btn.textContent = label;
+      btn.addEventListener("click", () => { fn(); toast(label, 1200); });
+      dom.cheatGrid.appendChild(btn);
+    });
+  }
+  function toggleCheats() {
+    if (!state.started || state.mode === "2d") return;
+    if (currentOverlay === "cheats") closeOverlay();
+    else if (!currentOverlay) { renderCheats(); openOverlay("cheats"); }
+  }
+
   // ---- objective waypoint beacon ----
   const beacon = LP.beacon(); beacon.setEnabled(false);
   function activeWaypoint() {
@@ -1418,6 +1525,8 @@
     if (k === "j" && state.mode !== "2d") { toggleQuests(); return; }
     if (k === "c" && state.mode !== "2d") { toggleCodex(); return; }
     if (k === "l" && state.mode !== "2d") { toggleMissions(); return; }
+    if (k === "k" && state.mode !== "2d") { toggleAch(); return; }
+    if ((e.key === "`" || e.key === "~") && state.mode !== "2d") { toggleCheats(); return; }
     if (k === "t" && state.mode !== "2d") { world.skipTime(); toast("Time passes — " + world.timeLabel(), 1400); return; }
     if (k === "g" && state.mode !== "2d") { state.companionsStay = !state.companionsStay; toast("Companions: " + (state.companionsStay ? "hold position" : "follow"), 1400); return; }
     if (k === "h" && state.mode !== "2d") { usePotion(); return; }
@@ -1425,7 +1534,7 @@
     if (e.key === "Escape") {
       if (state.mode === "2d") return;
       if (!dom.settings.classList.contains("hidden")) { showScreen(settingsReturn === "pause" ? "pause" : "menu"); return; }
-      if (currentOverlay === "inventory" || currentOverlay === "map" || currentOverlay === "quests" || currentOverlay === "codex" || currentOverlay === "missions") closeOverlay();
+      if (["inventory", "map", "quests", "codex", "missions", "achievements", "cheats"].indexOf(currentOverlay) >= 0) closeOverlay();
       else if (currentOverlay === "pause") resumeGame();
       else pauseGame();
     }
@@ -1567,6 +1676,8 @@
     checkTreasurePickup();
     updateArrows(dt);
     checkMission(dt);
+    checkAchievements();
+    updateHints(dt);
     if (state.mission >= 0) updateMissionBanner();
     dom.clockHud.textContent = "· " + world.timeLabel();
     if (state.mode === "boss") { updateBoss(dt); return; }
@@ -1737,7 +1848,7 @@
   // ============================================================
   // SCREEN / MENU FLOW
   // ============================================================
-  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map", "quests", "codex", "missions"];
+  const screens = ["splash", "menu", "settings", "credits", "pause", "inventory", "victory", "map", "quests", "codex", "missions", "achievements", "cheats"];
   function showScreen(id) { screens.forEach((s) => dom[s].classList.toggle("hidden", s !== id)); }
   let settingsReturn = "menu";
   let currentOverlay = null; // "pause" | "inventory" | null (in-game overlays)
@@ -1833,6 +1944,8 @@
   dom.btnCodexClose.addEventListener("click", closeOverlay);
   dom.btnMissions.addEventListener("click", () => { if (!state.started) startGame(null); openMissions(); });
   dom.btnMissionsClose.addEventListener("click", closeOverlay);
+  dom.btnAchClose.addEventListener("click", closeOverlay);
+  dom.btnCheatsClose.addEventListener("click", closeOverlay);
   dom.tcMap.addEventListener("touchstart", (e) => { e.preventDefault(); toggleMap(); }, { passive: false });
 
   // first user gesture anywhere enables audio (autoplay policy)

@@ -474,6 +474,12 @@ body.playing #missionBanner.show { display: block; }
 .mcard .mstate { position: absolute; top: 8px; right: 10px; font-size: 14px; }
 .mcard.active { outline: 2px solid var(--gold-bright); }
 
+/* ---------- Cheats grid ---------- */
+.cheat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.cheat-grid .ft-btn { text-align: center; }
+.codex-entry.locked { opacity: 0.5; }
+.codex-entry .ach-ico { font-size: 18px; margin-right: 6px; }
+
 /* ---------- Codex ---------- */
 .codex-list { max-height: 50vh; overflow-y: auto; }
 .codex-entry { padding: 8px 0; border-bottom: 1px solid rgba(244,217,160,0.12); }

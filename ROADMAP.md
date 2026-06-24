@@ -90,8 +90,8 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Branching outcomes / multiple endings** (L).
 
 ## 8. UI / UX & menus
-- [ ] **Main menu & pause menu** (S–M) — start, continue, options, quit.
-- [ ] **Settings menu** (M) — graphics quality, sensitivity, volume, language, key rebinding.
+- [x] **Main menu & pause menu** — title, continue, missions, free roam, settings, credits, pause. ✅
+- [x] **Settings menu** — volume/mute/sensitivity/FOV/quality/fog/music/difficulty/reduced-motion. ✅ (rebinding/language TBD)
 - [x] **World map & minimap** — live minimap + full map (M) showing player, treasure, secrets, buildings, oasis. ✅ (fast travel TBD)
 - [x] **In-world markers/waypoints** — glowing beacon + minimap ring on the active objective. ✅
 - [x] **Tutorial / onboarding** — staged contextual hints on a new game. ✅
@@ -115,7 +115,7 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Community fresco sharing** (L) — players paint frescoes others can play.
 
 ## 11. Persistence & backend
-- [ ] **Save / load** (M) — localStorage first, then cloud saves.
+- [x] **Save / load** — localStorage auto-save + Continue. ✅ (cloud TBD)
 - [ ] **Accounts / profiles** (L) — needs backend (e.g. Node + DB).
 - [ ] **Cloud progression & settings sync** (L).
 - [ ] **Analytics / telemetry** (M) — funnel, puzzle drop-off, balancing data.
@@ -124,16 +124,16 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **PBR materials & better lighting** (L) — move from StandardMaterial to PBR where it helps; keep stylized look.
 - [ ] **Shadows** (M) — shadow maps for sun/torches.
 - [ ] **Post-processing** (M) — bloom, color grading, vignette, SSAO, depth of field, true volumetric god-rays.
-- [ ] **Particle upgrades** (S–M) — embers, sand drift, splashes, magic wisps.
+- [x] **Particle upgrades** — torch embers + sandstorm sand drift. ✅ (splashes/wisps TBD)
 - [ ] **Decals & weathering** (M) — cracks, moss, sand piles.
 - [ ] **LOD & impostors** (M) — for distant pyramids/mountains.
 - [ ] **Higher-detail art option** (L) — optional asset pack for a "more realistic" mode (toggle low-poly ⇄ detailed).
 - [ ] **Animated water/cloth/foliage** (M).
 
 ## 13. Controls & accessibility
-- [ ] **Gamepad support** (M).
+- [x] **Gamepad support** — Babylon gamepad camera + button polling (attack/switch/pause). ✅
 - [ ] **Key rebinding** (S).
-- [ ] **Full mobile controls for 3D** (M) — virtual joystick + look drag (currently 2D-focused).
+- [x] **Full mobile controls for 3D** — left joystick + drag-look + action/pause/map buttons. ✅
 - [~] **Accessibility** — reduced-motion + difficulty assists done; colorblind/subtitles/text-scaling/rebinding TBD.
 
 ## 14. Performance & technical
@@ -151,23 +151,23 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Economy balancing** (M) — collectible/upgrade costs once inventory exists.
 - [ ] **Pacing** (ongoing) — explore vs. puzzle vs. combat rhythm.
 - [ ] **Playtest loop & metrics** (ongoing) — use analytics to find frustration points.
-- [ ] **Hint system** (S–M) — escalating hints if the player is stuck.
+- [x] **Hint system** — escalating hints toast if you stall on the active objective. ✅
 
 ## 16. Tooling & content pipeline
 - [ ] **Level editor** (L) — place props/murals/puzzles in-engine, export to data.
 - [ ] **Data-driven content** (M) — define zones/puzzles/dialogue in JSON instead of code.
 - [ ] **Fresco/puzzle authoring tool** (L).
-- [ ] **Debug console & cheats** (S) — teleport, skip puzzle, spawn boss (handy for testing).
+- [x] **Debug console & cheats** — cheat panel (backquote): heal, weapons, scarabs, themes, unlock missions… ✅
 
 ## 17. Platform & distribution
 - [x] **PWA / installable + offline** — manifest + service worker (app shell cached). ✅
 - [ ] **Mobile (Capacitor) / desktop (Electron/Tauri) builds** (L).
 - [ ] **Steam release** (L) — achievements, cloud saves.
 - [ ] **itch.io / web build hosting** (S).
-- [ ] **Achievements** (M).
+- [x] **Achievements** — 12 local achievements with toasts + a panel (K). ✅
 
 ## 18. Polish & "juice"
-- [ ] **Screen shake, hit-stop, impact FX** (S).
+- [~] **Screen shake / impact FX** — camera shake + hit SFX ✅; hit-stop TBD.
 - [ ] **Camera transitions** (S) — smooth 3D⇄2D blends, boss intro cams.
 - [ ] **UI animations & sound feedback** (S).
 - [ ] **Haptics on mobile/gamepad** (S).

@@ -273,6 +273,21 @@
     dust.minEmitPower = 0.02; dust.maxEmitPower = 0.08;
     dust.start();
 
+    // ---- torch embers (rising sparks) ----
+    const embers = new B.ParticleSystem("embers", 200, scene);
+    embers.particleTexture = dot;
+    embers.emitter = new B.Vector3(0, 0, 0);
+    const emPts = torches.map((t) => t.flame.position);
+    embers.startPositionFunction = (wm, pos) => { const p = emPts[Math.floor(Math.random() * emPts.length)]; pos.x = p.x + (Math.random() - 0.5) * 0.3; pos.y = p.y; pos.z = p.z + (Math.random() - 0.5) * 0.3; };
+    embers.color1 = new B.Color4(1, 0.6, 0.2, 0.9); embers.color2 = new B.Color4(1, 0.4, 0.1, 0.7);
+    embers.colorDead = new B.Color4(0.6, 0.2, 0.05, 0);
+    embers.minSize = 0.03; embers.maxSize = 0.08; embers.minLifeTime = 0.8; embers.maxLifeTime = 1.6;
+    embers.emitRate = 50; embers.blendMode = B.ParticleSystem.BLENDMODE_ADD;
+    embers.gravity = new B.Vector3(0, 1.4, 0);
+    embers.direction1 = new B.Vector3(-0.2, 1, -0.2); embers.direction2 = new B.Vector3(0.2, 1.6, 0.2);
+    embers.minEmitPower = 0.2; embers.maxEmitPower = 0.6;
+    embers.start();
+
     // ---- sandstorm weather (periodic) ----
     const sand = new B.ParticleSystem("sand", 1200, scene);
     sand.particleTexture = dot;
