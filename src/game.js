@@ -126,6 +126,7 @@
     boss: null,
     serpent: null, serpentDefeated: false,
     mount: null, secretBuf: "",
+    crypt: false, cryptVisited: false, savedSurface: null,
     treasure: null,
     enemies: [],
     npcs: [],
@@ -1096,6 +1097,7 @@
     { t: "Master of Arms", h: "Wield all three weapons.", g: { type: "weaponsAll" } },
     { t: "The Full Hunt", h: "Every scarab, every scroll.", g: { type: "huntAll" } },
     { t: "Streets of the Modern City", h: "Under new lamplight, the dark still swarms.", g: { type: "shades", n: 15 }, theme: "modern" },
+    { t: "Into the Duat", h: "A violet portal east of the temple leads down to the realm of the dead.", g: { type: "crypt" } },
     { t: "The Serpent of Chaos", h: "Apophis stirs in the deep waters — only steel and arrow can unmake it.", g: { type: "serpent" } },
     { t: "Champion of the Two Worlds", h: "Fulfil the pharaoh's destiny.", g: { type: "all" } },
   ];
@@ -1124,6 +1126,7 @@
       case "storm": return S.stormSurvived;
       case "zonesAll": return S.zonesVisited.size >= 4;
       case "huntAll": return collectedScarabs() >= world.scarabs.length && state.codex.length >= world.scrolls.length;
+      case "crypt": return state.cryptVisited;
       case "serpent": return state.serpentDefeated;
       case "all": return state.objectives.door && state.objectives.light && state.objectives.barque && state.objectives.boss;
       default: return false;
@@ -1147,6 +1150,7 @@
       case "storm": return "Survive a sandstorm";
       case "zonesAll": return "Visit all 4 regions (" + S.zonesVisited.size + "/4)";
       case "huntAll": return "Collect all scarabs & scrolls";
+      case "crypt": return "Descend into the Duat (the crypt portal)";
       case "serpent": return "Defeat Apophis, the serpent of chaos";
       case "all": return "Complete the whole pilgrimage";
       default: return "";
@@ -1304,6 +1308,7 @@
     ["Skip Time", () => { world.skipTime(); }],
     ["Spawn Shades", () => { spawnEnemies(); }],
     ["Spawn Serpent", () => { startSerpent(); }],
+    ["Enter Crypt", () => { enterCrypt(); }],
   ];
   function renderCheats() {
     dom.cheatGrid.innerHTML = "";
@@ -1669,6 +1674,8 @@
     if (key === "q") { cycleWeapon(); return; }
     if (state.mode === "boss") { if (key === " " || key === "spacebar") attack(); return; }
     if (key === "e") {
+      const portal = lookedAtPortal();
+      if (portal) { portal.metadata.portal === "down" ? enterCrypt() : exitCrypt(); return; }
       const m = lookedAtInteractive();
       if (m) enter2DMode(m);
       else { const npc = nearestNPC(); if (npc) openDialogue(npc); }
@@ -1739,7 +1746,7 @@
     e.preventDefault();
     if (state.mode === "2d") exit2DMode();
     else if (state.mode === "boss") attack();
-    else { const m = lookedAtInteractive(); if (m) enter2DMode(m); else { const npc = nearestNPC(); if (npc) openDialogue(npc); else attack(); } }
+    else { const pt = lookedAtPortal(); if (pt) { pt.metadata.portal === "down" ? enterCrypt() : exitCrypt(); return; } const m = lookedAtInteractive(); if (m) enter2DMode(m); else { const npc = nearestNPC(); if (npc) openDialogue(npc); else attack(); } }
   }, { passive: false });
   dom.tcPause.addEventListener("touchstart", (e) => { e.preventDefault(); pauseGame(); }, { passive: false });
 
@@ -1815,7 +1822,7 @@
     if (edge(0)) {
       if (state.mode === "2d") exit2DMode();
       else if (state.mode === "boss") attack();
-      else if (!state.paused) { const m = lookedAtInteractive(); if (m) enter2DMode(m); else { const npc = nearestNPC(); if (npc) openDialogue(npc); else attack(); } }
+      else if (!state.paused) { const pt = lookedAtPortal(); if (pt) { pt.metadata.portal === "down" ? enterCrypt() : exitCrypt(); } else { const m = lookedAtInteractive(); if (m) enter2DMode(m); else { const npc = nearestNPC(); if (npc) openDialogue(npc); else attack(); } } }
     }
     if (edge(2)) cycleWeapon(); // X = cycle weapon
     if (edge(1) && state.mode === "2d") exit2DMode();
@@ -1856,6 +1863,7 @@
     night:  { msg: "secret: the hours turn", fn: () => { world.skipTime(); } },
     khepri: { msg: "secret: every scarab revealed", fn: () => { world.scarabs.forEach((s) => { if (!s.collected) { s.collected = true; s.root.setEnabled(false); } }); updateScarabHud(); renderObjectives(); } },
     apophis:{ msg: "secret: the serpent of chaos rises", fn: () => { startSerpent(); } },
+    duat:   { msg: "secret: the Duat opens", fn: () => { state.crypt ? exitCrypt() : enterCrypt(); } },
     smite:  { msg: "secret: shades gather", fn: () => { spawnEnemies(); } },
     arsenal:{ msg: "secret: the armoury opens", fn: () => { ["spear", "bow"].forEach(ownWeapon); } },
   };
@@ -1878,9 +1886,38 @@
   }
 
   // ============================================================
+  // THE CRYPT / DUAT — descend through the portal, climb back out
+  // ============================================================
+  function enterCrypt() {
+    if (state.crypt || !world.cryptSpawn) return;
+    if (state.mount) dismountCamel();
+    state.savedSurface = { p: camera.position.clone(), r: camera.rotation.clone() };
+    state.crypt = true; state.cryptVisited = true;
+    world.setUnderground(true);
+    camera.position.copyFrom(world.cryptSpawn);
+    Sound.stoneSlide ? Sound.stoneSlide() : Sound.whoosh();
+    toast("You descend into the Duat — the realm of the dead.", 3000);
+    setInstr("Explore the crypt. Step into the blue portal to return.");
+  }
+  function exitCrypt() {
+    if (!state.crypt) return;
+    state.crypt = false;
+    world.setUnderground(false);
+    if (state.savedSurface) { camera.position.copyFrom(state.savedSurface.p); camera.rotation.copyFrom(state.savedSurface.r); }
+    Sound.whoosh && Sound.whoosh();
+    toast("You climb back into the living world.", 2400);
+  }
+  // E-key / interaction on a portal mesh
+  function lookedAtPortal() {
+    const pick = scene.pickWithRay(camera.getForwardRay(6), (m) => m.metadata && m.metadata.portal);
+    return pick.hit ? pick.pickedMesh : null;
+  }
+
+  // ============================================================
   // RENDER LOOP
   // ============================================================
   function groundCamera() {
+    if (state.crypt) { camera.position.y = (world.crypt.floor || 0) + EYE; return; }
     camera.position.y = heightAt(camera.position.x, camera.position.z) + EYE + (state.mount ? 1.35 : 0);
   }
   let lastT = performance.now();
@@ -1920,6 +1957,12 @@
     updateNPCs(dt);
 
     // 3d: crosshair + contextual hint
+    const portal = lookedAtPortal();
+    if (portal) {
+      dom.crosshair.classList.add("active");
+      setInstr((isTouch ? "Tap ⚔" : "Press E") + (portal.metadata.portal === "down" ? " to descend into the Duat" : " to return to the surface"));
+      return;
+    }
     const m = lookedAtInteractive();
     if (m) {
       dom.crosshair.classList.add("active");

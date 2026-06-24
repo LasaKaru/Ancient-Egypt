@@ -18,6 +18,9 @@ bigger world built from several connected zones:
   avenues connecting them — the whole map is built up like a city plan, with
   secrets hidden throughout.
 - **The Oasis** — a low-poly lake with palms, reeds and grass.
+- **The Crypt / Duat** — a sealed underground tomb reached through a glowing
+  violet **portal** east of the temple: torchlit pillared hall with sarcophagi
+  and hieroglyph walls. Step into the blue portal (or type `duat`) to return.
 - **Pyramid Horizon & Mountains** — pyramids, mesas and a mountain range.
 
 A **minimap** (top-right, click to enlarge) and a full **map** (`M`) show your
@@ -130,6 +133,7 @@ Just **type** these words while exploring (no menu needed):
 | `night` | Skip the time of day |
 | `khepri` | Reveal/collect every scarab |
 | `apophis` | Summon the serpent boss |
+| `duat` | Descend into / out of the Crypt (the Duat) |
 | `smite` | Spawn a pack of shades |
 | `arsenal` | Grant all weapons |
 
@@ -152,7 +156,7 @@ hits zero you respawn at the gate.
 
 ## Missions (campaign)
 
-Beyond free roam, there's a **26-mission campaign** (menu → **MISSIONS**, or `L`
+Beyond free roam, there's a **27-mission campaign** (menu → **MISSIONS**, or `L`
 in-game). Each mission has a distinct objective and a "curious" hook — reach a
 place, solve a fresco, hunt scarabs, banish shades, talk to citizens, find lore,
 survive a sandstorm, master the weapons, defeat Anubis, slay **Apophis the

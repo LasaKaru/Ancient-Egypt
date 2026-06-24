@@ -107,7 +107,9 @@
     starDome.material = stMat; starDome.infiniteDistance = true; starDome.isPickable = false;
 
     const sky = { t: 0.2 }; // 0..1 ; ~0.2 ≈ warm late-afternoon
+    let underground = false; // when in the crypt, force a dark sealed ambience
     const C_DAY = B.Color3.FromHexString("#caa07a"), C_NIGHT = B.Color3.FromHexString("#15203f");
+    const C_CRYPT = B.Color3.FromHexString("#0a0610");
     function applyDayNight() {
       const ang = sky.t * Math.PI * 2, elev = Math.sin(ang);
       const day = Math.max(0, elev), night = Math.max(0, -elev), k = elev * 0.5 + 0.5;
@@ -119,6 +121,10 @@
       nMat.alpha = night * 0.82; stMat.alpha = night;
       sunMesh.position = new B.Vector3(Math.cos(ang), Math.max(-0.2, elev), Math.sin(ang)).scale(200);
       sunMesh.setEnabled(elev > -0.08);
+      if (underground) {           // sealed crypt: kill the sky, keep only torchlight
+        hemi.intensity = 0.1; sunLight.intensity = 0.0;
+        scene.fogColor = C_CRYPT; nMat.alpha = 0; stMat.alpha = 0; sunMesh.setEnabled(false);
+      }
     }
     scene.onBeforeRenderObservable.add(() => { sky.t = (sky.t + (scene.getEngine().getDeltaTime() / 1000) / 240) % 1; applyDayNight(); });
     applyDayNight();
@@ -648,6 +654,77 @@
       else { dm.diffuseColor = new B.Color3(1, 1, 1); natureLayer.setEnabled(false); modernLayer.setEnabled(false); hemi.diffuse = B.Color3.FromHexString("#bfa9d6"); }
     }
 
+    // ============================================================
+    // THE CRYPT / DUAT — a sealed underground tomb, reached by a portal.
+    // Built far outside the surface play area (and enclosed) so it reads as
+    // its own world; the camera is grounded to a flat floor while inside.
+    // ============================================================
+    const CRYPT = { x: 140, z: 140, w: 26, d: 34, h: 7, floor: 0 };
+    const cryptRoot = new B.TransformNode("cryptRoot", scene);
+    (function buildCrypt() {
+      const cx = CRYPT.x, cz = CRYPT.z, w = CRYPT.w, d = CRYPT.d, h = CRYPT.h;
+      const stoneDk = LP.mat("#3a3340"), stone = LP.mat("#4b4350"), gold = LP.mat("#caa23e", "#5a3d00", 0.35);
+      function slabAt(name, sw, sh, sd, x, y, z) {
+        const m = LP.box(sw, sh, sd, stone, name); LP.flat(m); m.parent = cryptRoot;
+        m.position.set(x, y, z); m.checkCollisions = true; return m;
+      }
+      // floor + ceiling
+      const fl = LP.box(w, 0.4, d, stoneDk, "cryptFloor"); LP.flat(fl); fl.parent = cryptRoot; fl.position.set(cx, CRYPT.floor - 0.2, cz); fl.receiveShadows = true;
+      const cl = LP.box(w, 0.4, d, stoneDk, "cryptCeil"); LP.flat(cl); cl.parent = cryptRoot; cl.position.set(cx, CRYPT.floor + h, cz);
+      // four walls
+      slabAt("cryptWN", w, h, 0.6, cx, h / 2, cz + d / 2);
+      slabAt("cryptWS", w, h, 0.6, cx, h / 2, cz - d / 2);
+      slabAt("cryptWE", 0.6, h, d, cx + w / 2, h / 2, cz);
+      slabAt("cryptWW", 0.6, h, d, cx - w / 2, h / 2, cz);
+      // pillars in two rows
+      for (let i = -1; i <= 1; i++) [-5, 5].forEach((ox) => {
+        const p = LP.cyl(h - 0.4, 0.6, 0.8, 8, stone, "cryptPillar"); p.parent = cryptRoot;
+        p.position.set(cx + ox, (h - 0.4) / 2, cz + i * 9); p.checkCollisions = true;
+      });
+      // torch sconces (point lights) for the only illumination down here
+      [[-w / 2 + 1, cz - 8], [w / 2 - 1, cz - 8], [-w / 2 + 1, cz + 8], [w / 2 - 1, cz + 8]].forEach((t, i) => {
+        const flame = LP.lowSphere(0.45, 1, LP.mat("#ff8a2a", "#ff6a10", 1), "cryptFlame");
+        flame.parent = cryptRoot; flame.position.set(t[0], 3.2, t[1]);
+        const lt = new B.PointLight("cryptTorch" + i, new B.Vector3(t[0], 3.2, t[1]), scene);
+        lt.diffuse = new B.Color3(1, 0.6, 0.3); lt.intensity = 0.7; lt.range = 16; lt.parent = cryptRoot;
+      });
+      // sarcophagi along the centre (the "curious" find)
+      [-9, 0, 9].forEach((oz, i) => {
+        const t = LP.treasure(new B.Vector3(cx, CRYPT.floor, cz + oz));
+        t.root.parent = cryptRoot; t.glow.intensity = i === 1 ? 0.9 : 0.4;
+        if (i !== 1) t.glow.diffuse = new B.Color3(0.5, 0.3, 0.8);
+      });
+      // hieroglyph wall panels (emissive) for atmosphere
+      [-6, 0, 6].forEach((ox) => {
+        const panel = LP.box(3.4, 3.4, 0.08, gold, "cryptGlyph"); LP.flat(panel); panel.parent = cryptRoot;
+        panel.position.set(cx + ox, 3.2, cz - d / 2 + 0.4);
+      });
+      // exit portal (glowing ring) back to the surface
+      const exitRing = B.MeshBuilder.CreateTorus("cryptExitPortal", { diameter: 2.6, thickness: 0.28, tessellation: 18 }, scene);
+      const em = new B.StandardMaterial("cryptExitMat", scene);
+      em.emissiveColor = B.Color3.FromHexString("#7ad0ff"); em.diffuseColor = new B.Color3(0, 0, 0);
+      em.disableLighting = true; em.fogEnabled = false; exitRing.material = em;
+      exitRing.parent = cryptRoot; exitRing.position.set(cx, CRYPT.floor + 1.6, cz + d / 2 - 1.2);
+      exitRing.metadata = { portal: "up" }; exitRing.isPickable = true;
+    })();
+    const cryptSpawn = new B.Vector3(CRYPT.x, CRYPT.floor + 1.7, CRYPT.z - CRYPT.d / 2 + 2.5);
+
+    // ---- surface portal: a glowing tomb-doorway east of the temple ----
+    const portalDown = (function () {
+      const px = 11, pz = 7, py = heightAt(px, pz);
+      const frame = LP.box(2.4, 3.4, 0.5, LP.mat("#5a4a6a"), "portalFrame"); LP.flat(frame);
+      frame.position.set(px, py + 1.7, pz); frame.checkCollisions = true;
+      const ring = B.MeshBuilder.CreateTorus("portalDown", { diameter: 2.0, thickness: 0.24, tessellation: 18 }, scene);
+      const pm = new B.StandardMaterial("portalDownMat", scene);
+      pm.emissiveColor = B.Color3.FromHexString("#b388ff"); pm.diffuseColor = new B.Color3(0, 0, 0);
+      pm.disableLighting = true; pm.fogEnabled = false; ring.material = pm;
+      ring.position.set(px, py + 1.7, pz + 0.3); ring.metadata = { portal: "down" }; ring.isPickable = true;
+      const gl = new B.PointLight("portalGlow", new B.Vector3(px, py + 1.7, pz), scene);
+      gl.diffuse = new B.Color3(0.6, 0.4, 1); gl.intensity = 0.6; gl.range = 8;
+      return ring;
+    })();
+    function setUnderground(on) { underground = on; applyDayNight(); }
+
     // ---- invisible world boundary ----
     const bound = B.MeshBuilder.CreateBox("bound", { width: 170, height: 30, depth: 170 }, scene);
     bound.checkCollisions = true; bound.flipFaces(true); bound.isVisible = false;
@@ -658,6 +735,7 @@
     return { walls, torches, pillars, ROOM, spawn, heightAt, water, hemi, sunLight,
              boat3D, boatDock, boatFar, dust, godRays, scarabs, cityBuildings, jars,
              citizens, weaponPickups, scrolls, districts: DISTRICTS,
+             crypt: CRYPT, cryptSpawn, portalDown, setUnderground,
              sky, setSandstorm, isStorm: () => storm, setTheme, setRealism, skipTime: () => { sky.t = (sky.t + 0.12) % 1; applyDayNight(); },
              timeLabel: () => { const e = Math.sin(sky.t * Math.PI * 2); return e > 0.35 ? "Day" : e > -0.1 ? "Dusk" : e > -0.6 ? "Night" : "Midnight"; },
              oasis: { x: 38, z: -8, r: 12 }, center: B.Vector3.Zero() };

@@ -52,11 +52,11 @@ tagged with a rough size: **S** (hours), **M** (a day or two), **L** (multi-day)
 - [ ] **Merchant NPC / trading** (M).
 
 ## 3. World, environments & level design
-- [~] **Theme variants per mission** — wild/nature (grass, trees, flowers, camels) and modernised-city overlays ✅; distinct crypt/Duat/pyramid-interior biomes TBD.
+- [~] **Theme variants per mission** — wild/nature (grass, trees, flowers, camels) and modernised-city overlays ✅; a sealed **Crypt/Duat** underground biome (portal-reached, torchlit, sarcophagi + hieroglyph walls) ✅; pyramid-interior biome TBD.
 - [ ] **Mountains & rock formations** (M) — low-poly mountain meshes, mesas, layered cliffs, scree fields of **stones/boulders**.
 - [~] **Better water** — animated ripples + oasis foam ring ✅; reflective shader / Nile / waterfalls TBD.
 - [ ] **Rocks & props variety** (S) — more rock/cactus/plant variants, broken columns, statues, sphinxes, urns, braziers.
-- [x] **Level / world structure** — a 26-mission campaign with a level-select screen and sequential unlocks over the open world. ✅
+- [x] **Level / world structure** — a 27-mission campaign with a level-select screen and sequential unlocks over the open world. ✅
 - [ ] **Procedural scatter / variation** (M) — seeded placement so each zone feels rich but performant.
 - [~] **Day/night cycle + weather** — sun/sky/fog day→night (T to skip) ✅; periodic sandstorms ✅; rain TBD.
 - [ ] **Interactive environment** (M) — destructible pots, movable blocks, pressure plates, rope/pulley puzzles.
